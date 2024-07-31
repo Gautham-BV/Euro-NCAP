@@ -1,0 +1,42 @@
+import pandas as pd
+import os
+
+# Define the paths
+input_file = 'Euro NCAP/2024 Datasheets & Spreadsheets/2024-07 Release/vw-passat-2024-1021.xlsx'
+output_folder = 'Results'
+output_file = os.path.join(output_folder, 'extracted_table.xlsx')
+
+# Read the Excel file
+df = pd.read_excel(input_file, sheet_name='VRU Headform', engine='openpyxl')
+
+# Initialize the coordinates of the first occurrence of "Prediction"
+row_index = None
+col_index = None
+
+# Search for the word "Prediction" in the entire DataFrame
+for i in range(df.shape[0]):
+    for j in range(df.shape[1]):
+        cell_value = str(df.iloc[i, j]).strip()  # Convert to string and strip whitespace
+        if cell_value == 'Prediction':
+            row_index = i
+            col_index = j
+            break
+    if row_index is not None:
+        break
+
+if row_index is not None and col_index is not None:
+    # Extract the 5 columns and 10 rows around the found cell
+    start_row = max(row_index - 4, 0)  # Ensure start_row is not negative
+    end_row = min(row_index + 6, len(df))  # Ensure end_row does not exceed the dataframe length
+    start_col = max(col_index - 2, 0)  # Ensure start_col is not negative
+    end_col = min(col_index + 3, df.shape[1])  # 5 columns including the found column
+    
+    extracted_table = df.iloc[start_row:end_row, start_col:end_col]
+    
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+        
+    extracted_table.to_excel(output_file, index=False)
+    print(f'Table extracted and saved to {output_file}')
+else:
+    print('The word "Prediction" was not found in the sheet.')
