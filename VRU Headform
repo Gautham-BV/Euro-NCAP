@@ -1,42 +1,97 @@
-import pandas as pd
 import os
+import pandas as pd
+import openpyxl
 
-# Define the paths
-input_file = 'Euro NCAP/2024 Datasheets & Spreadsheets/2024-07 Release/vw-passat-2024-1021.xlsx'
-output_folder = 'Results'
-output_file = os.path.join(output_folder, 'extracted_table.xlsx')
-
-# Read the Excel file
-df = pd.read_excel(input_file, sheet_name='VRU Headform', engine='openpyxl')
-
-# Initialize the coordinates of the first occurrence of "Prediction"
-row_index = None
-col_index = None
-
-# Search for the word "Prediction" in the entire DataFrame
-for i in range(df.shape[0]):
-    for j in range(df.shape[1]):
-        cell_value = str(df.iloc[i, j]).strip()  # Convert to string and strip whitespace
-        if cell_value == 'Prediction':
-            row_index = i
-            col_index = j
-            break
-    if row_index is not None:
-        break
-
-if row_index is not None and col_index is not None:
-    # Extract the 5 columns and 10 rows around the found cell
-    start_row = max(row_index - 4, 0)  # Ensure start_row is not negative
-    end_row = min(row_index + 6, len(df))  # Ensure end_row does not exceed the dataframe length
-    start_col = max(col_index - 2, 0)  # Ensure start_col is not negative
-    end_col = min(col_index + 3, df.shape[1])  # 5 columns including the found column
-    
-    extracted_table = df.iloc[start_row:end_row, start_col:end_col]
-    
-    if not os.path.exists(output_folder):
-        os.makedirs(output_folder)
+def extract_data_from_excel(file_path):
+    header = None
+    data = []
+    try:
+        # Load the workbook and sheets
+        workbook = openpyxl.load_workbook(file_path, data_only=True)
         
-    extracted_table.to_excel(output_file, index=False)
-    print(f'Table extracted and saved to {output_file}')
-else:
-    print('The word "Prediction" was not found in the sheet.')
+        # Extract the first word from the "OVERALL RATING" sheet
+        if "OVERALL RATING" in workbook.sheetnames:
+            overall_rating_sheet = workbook["OVERALL RATING"]
+            first_word = None
+            for row in overall_rating_sheet.iter_rows():
+                for cell in row:
+                    if cell.value:
+                        first_word = str(cell.value).split()[0]
+                        break
+                if first_word:
+                    break
+        else:
+            return None, None
+
+        # Extract the 10x10 block of data from the "VRU Headform" sheet starting at "PREDICTION"
+        if "VRU Headform" in workbook.sheetnames:
+            vru_headform_sheet = workbook["VRU Headform"]
+            prediction_cell = None
+            for row in vru_headform_sheet.iter_rows():
+                for cell in row:
+                    if cell.value == "PREDICTION":
+                        prediction_cell = cell
+                        break
+                if prediction_cell:
+                    break
+
+            if prediction_cell:
+                start_row = prediction_cell.row
+                start_col = prediction_cell.column
+                # Extract the 10x10 block of data
+                data = [
+                    [vru_headform_sheet.cell(row=i, column=j).value
+                     for j in range(start_col, start_col + 20)]
+                    for i in range(start_row, start_row + 10)
+                ]
+    except Exception as e:
+        print(f"Error processing {file_path}: {e}")
+        return None, None
+
+    return first_word, data
+
+def print_table(df):
+    # Format and print the DataFrame
+    print(df.to_string(index=False))
+
+# Define the root directory containing all the subdirectories and files
+root_directory = "Euro NCAP"
+
+# Define the output directory and file path
+output_directory = "Results"
+output_file = os.path.join(output_directory, "combined_data.xlsx")
+
+# Ensure the output directory exists
+if not os.path.exists(output_directory):
+    os.makedirs(output_directory)
+
+# Initialize a new Excel writer
+with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
+    # Walk through the directory tree
+    for subdir, dirs, files in os.walk(root_directory):
+        for file in files:
+            # Check if the file is an Excel file
+            if file.endswith('.xlsx') or file.endswith('.xls'):
+                # Create the full file path
+                file_path = os.path.join(subdir, file)
+                first_word, data = extract_data_from_excel(file_path)
+                if first_word and data:
+                    # Create a DataFrame from the data and take the first row as header
+                    df = pd.DataFrame(data)
+                    if not df.empty:
+                        # Use the first row as header and drop the first row
+                        df.columns = df.iloc[0]
+                        df = df[1:]
+                        # Drop rows and columns with NaN values
+                        df = df.dropna(how='all').dropna(axis=1, how='all')
+                        
+                        # Print the formatted DataFrame
+                        print(f"\nExtracted Word: {first_word}")
+                        print("Extracted Table:")
+                        print_table(df)
+                        
+                        # Write to the new Excel sheet with the extracted word as the sheet name
+                        sheet_name = first_word if len(first_word) <= 31 else first_word[:31]  # Sheet names are limited to 31 characters
+                        df.to_excel(writer, sheet_name=sheet_name, index=False)
+
+print(f"Data extraction complete. Results saved in {output_file}.")
