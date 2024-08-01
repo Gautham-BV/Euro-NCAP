@@ -10,44 +10,47 @@ output_folder = 'Extracted Data/VRU Headform - Color-wise graph'
 # Ensure the output folder exists
 os.makedirs(output_folder, exist_ok=True)
 
-# Iterate through each file in the input folder
+# Iterate over each Excel file in the input folder
 for filename in os.listdir(input_folder):
     if filename.endswith('.xlsx'):
-        file_path = os.path.join(input_folder, filename)
-        output_file = os.path.join(output_folder, filename)
+        input_file_path = os.path.join(input_folder, filename)
+        output_file_path = os.path.join(output_folder, filename)
         
-        # Create a new workbook for the graphs
+        # Load the Excel file
+        xl = pd.ExcelFile(input_file_path)
+        
+        # Create a new Excel workbook for the output
         wb = Workbook()
-        ws = wb.active
-        ws.title = "Graphs"
+        graphs_sheet = wb.create_sheet(title='Graphs')
+        
+        # Remove the default sheet created by Workbook()
+        default_sheet = wb['Sheet']
+        wb.remove(default_sheet)
 
-        # Read the Excel file
-        xls = pd.ExcelFile(file_path)
+        for sheet_name in xl.sheet_names:
+            # Read the sheet into a DataFrame
+            df = xl.parse(sheet_name)
 
-        # Iterate through each sheet in the Excel file
-        for sheet_name in xls.sheet_names:
-            df = pd.read_excel(xls, sheet_name=sheet_name)
-            
-            # Plot the graph
-            plt.figure(figsize=(10, 6))
-            plt.bar(df['Car Name'], df['Value'])
+            # Extract x and y axis labels from the first row
+            x_label = df.columns[0]
+            y_label = df.columns[1]
+
+            # Plot the data
+            plt.figure()
+            plt.plot(df.iloc[:, 0], df.iloc[:, 1])
+            plt.xlabel(x_label)
+            plt.ylabel(y_label)
             plt.title(sheet_name)
-            plt.xlabel('Car Name')
-            plt.ylabel('Value')
-
-            # Save the plot to a temporary file
-            temp_img_path = f'{sheet_name}.png'
-            plt.savefig(temp_img_path)
+            
+            # Save the plot as an image
+            plot_image_path = os.path.join(output_folder, f"{sheet_name}.png")
+            plt.savefig(plot_image_path)
             plt.close()
 
-            # Add the plot image to the Excel sheet
-            img = Image(temp_img_path)
-            ws.add_image(img, f'A{ws.max_row + 2}')
+            # Add the image to the 'Graphs' sheet
+            img = Image(plot_image_path)
+            graphs_sheet.add_image(img, 'A1')  # Add image at the first cell; adjust as needed
 
-            # Remove the temporary image file
-            os.remove(temp_img_path)
-
-        # Save the workbook with all graphs
-        wb.save(output_file)
-
-print("Graphs have been generated and saved successfully.")
+        # Save the new Excel file
+        wb.save(output_file_path)
+        print(f"Graphs saved to {output_file_path}")
