@@ -1,40 +1,55 @@
 import os
 from openpyxl import load_workbook, Workbook
 
-# Define the input and output folders
 input_folder = 'Extracted Data/VRU Headform - Prediction tables'
 output_folder = 'Extracted Data/VRU Headform - Color-wise graphs'
 
-# Ensure the output folder exists
+# Ensure output folder exists
 os.makedirs(output_folder, exist_ok=True)
 
-# Process each Excel file in the input folder
-for file_name in os.listdir(input_folder):
-    if file_name.endswith('.xlsx'):
-        # Load the input Excel file
-        input_file_path = os.path.join(input_folder, file_name)
-        workbook = load_workbook(input_file_path)
+# Iterate through each Excel file in the input folder
+for filename in os.listdir(input_folder):
+    if filename.endswith('.xlsx'):
+        # Load the input workbook
+        input_path = os.path.join(input_folder, filename)
+        input_wb = load_workbook(input_path)
+        input_sheet = input_wb.active
 
-        # Get the first sheet and the sheet names from the second column
-        first_sheet = workbook.active
-        sheet_names = [cell.value for cell in first_sheet['B'] if cell.value]
+        # Create a new workbook for output
+        output_wb = Workbook()
+        output_filename = os.path.join(output_folder, filename)
+        
+        # Get the sheet names to be created from the first sheet's second column
+        sheet_names = [cell.value for cell in input_sheet['B'] if cell.value is not None]
 
-        # Create a new workbook for the output
-        output_workbook = Workbook()
-        output_file_path = os.path.join(output_folder, file_name)
+        for sheet_name in sheet_names:
+            # Create new sheet in output file
+            output_sheet = output_wb.create_sheet(sheet_name)
+            
+            # Add headers 'Car Name' and 'Values'
+            output_sheet.append(['Car Name', 'Values'])
 
-        # For each name in the sheet_names, create a new sheet and add data
-        for name in sheet_names:
-            sheet = output_workbook.create_sheet(title=name)
-            sheet.append(["Car Name", "Values"])
-            for sheet_name in workbook.sheetnames:
-                sheet.append([sheet_name, ""])
+            # Iterate through sheets in the input file to find the sheet names
+            for input_sheet_name in input_wb.sheetnames:
+                input_sheet = input_wb[input_sheet_name]
+                found_value = None
+                
+                # Search for the word (output sheet name) in the input sheet
+                for row in input_sheet.iter_rows(min_row=1, max_row=input_sheet.max_row, min_col=1, max_col=input_sheet.max_column):
+                    for cell in row:
+                        if cell.value == sheet_name:
+                            found_value = row[1].value if len(row) > 1 else None
+                            break
+                    if found_value:
+                        break
+                
+                # Append the data to the output sheet
+                output_sheet.append([input_sheet_name, found_value])
 
-        # Remove the default sheet created by openpyxl
-        if 'Sheet' in output_workbook.sheetnames:
-            del output_workbook['Sheet']
+        # Remove default sheet created by Workbook
+        if 'Sheet' in output_wb.sheetnames:
+            del output_wb['Sheet']
 
         # Save the output workbook
-        output_workbook.save(output_file_path)
-
-print("Processing complete.")
+        output_wb.save(output_filename)
+        print(f'Processed and saved: {output_filename}')
