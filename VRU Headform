@@ -16,7 +16,7 @@ def extract_data_from_excel(file_path):
             for row in overall_rating_sheet.iter_rows():
                 for cell in row:
                     if cell.value:
-                        first_word = str(cell.value).split()[0]
+                        first_word = str(cell.value)
                         break
                 if first_word:
                     break
