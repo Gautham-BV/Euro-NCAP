@@ -1,29 +1,40 @@
 import os
-import pandas as pd
+from openpyxl import load_workbook, Workbook
 
-# Define input and output folders
+# Define the input and output folders
 input_folder = 'Extracted Data/VRU Headform - Prediction tables'
 output_folder = 'Extracted Data/VRU Headform - Color-wise graphs'
 
-# Ensure output directory exists
+# Ensure the output folder exists
 os.makedirs(output_folder, exist_ok=True)
 
 # Process each Excel file in the input folder
-for filename in os.listdir(input_folder):
-    if filename.endswith('.xlsx'):
-        input_path = os.path.join(input_folder, filename)
-        output_path = os.path.join(output_folder, filename)
+for file_name in os.listdir(input_folder):
+    if file_name.endswith('.xlsx'):
+        # Load the input Excel file
+        input_file_path = os.path.join(input_folder, file_name)
+        workbook = load_workbook(input_file_path)
 
-        # Read the Excel file
-        df = pd.read_excel(input_path, sheet_name=0)
+        # Get the first sheet and the sheet names from the second column
+        first_sheet = workbook.active
+        sheet_names = [cell.value for cell in first_sheet['B'] if cell.value]
 
-        # Extract sheet names from the second column of the first sheet
-        sheet_names = df.iloc[:, 1].dropna().unique()
+        # Create a new workbook for the output
+        output_workbook = Workbook()
+        output_file_path = os.path.join(output_folder, file_name)
 
-        # Create a new Excel writer object
-        with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
-            for sheet_name in sheet_names:
-                # Create an empty DataFrame for each sheet
-                pd.DataFrame().to_excel(writer, sheet_name=sheet_name)
+        # For each name in the sheet_names, create a new sheet and add data
+        for name in sheet_names:
+            sheet = output_workbook.create_sheet(title=name)
+            sheet.append(["Car Name", "Values"])
+            for sheet_name in workbook.sheetnames:
+                sheet.append([sheet_name, ""])
 
-        print(f'Created file: {output_path} with sheets: {list(sheet_names)}')
+        # Remove the default sheet created by openpyxl
+        if 'Sheet' in output_workbook.sheetnames:
+            del output_workbook['Sheet']
+
+        # Save the output workbook
+        output_workbook.save(output_file_path)
+
+print("Processing complete.")
