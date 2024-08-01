@@ -62,7 +62,7 @@ def print_table(df):
 root_directory = "Euro NCAP"
 
 # Define the output directory for the combined files
-output_directory = "Results"
+output_directory = "Extracted Data/VRU Headform - Prediction tables"
 
 # Ensure the output directory exists
 if not os.path.exists(output_directory):
@@ -70,12 +70,12 @@ if not os.path.exists(output_directory):
 
 # Iterate through each folder in the root directory
 for folder_name in os.listdir(root_directory):
-    folder_path = os.path.join(root_directory, folder_name)
+    folder_path = os.path.join(root_directory, folder_name).split()[0]
     
     # Ensure it's a directory
     if os.path.isdir(folder_path):
         # Define the path for the combined Excel file in the "Results" folder
-        output_file = os.path.join(output_directory, f"{folder_name}_combined.xlsx")
+        output_file = os.path.join(output_directory, f"{folder_name} - VRU Headform - Prediction table.xlsx")
         
         # Initialize a new Excel writer for the folder
         with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
