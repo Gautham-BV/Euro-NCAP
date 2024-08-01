@@ -1,0 +1,29 @@
+import os
+import pandas as pd
+
+# Define input and output folders
+input_folder = 'Extracted Data/VRU Headform - Prediction tables'
+output_folder = 'Extracted Data/VRU Headform - Color-wise graphs'
+
+# Ensure output directory exists
+os.makedirs(output_folder, exist_ok=True)
+
+# Process each Excel file in the input folder
+for filename in os.listdir(input_folder):
+    if filename.endswith('.xlsx'):
+        input_path = os.path.join(input_folder, filename)
+        output_path = os.path.join(output_folder, filename)
+
+        # Read the Excel file
+        df = pd.read_excel(input_path, sheet_name=0)
+
+        # Extract sheet names from the second column of the first sheet
+        sheet_names = df.iloc[:, 1].dropna().unique()
+
+        # Create a new Excel writer object
+        with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
+            for sheet_name in sheet_names:
+                # Create an empty DataFrame for each sheet
+                pd.DataFrame().to_excel(writer, sheet_name=sheet_name)
+
+        print(f'Created file: {output_path} with sheets: {list(sheet_names)}')
