@@ -21,12 +21,7 @@ for filename in os.listdir(input_folder):
         
         # Create a new Excel workbook for the output
         wb = Workbook()
-        graphs_sheet = wb.create_sheet(title='Graphs')
         
-        # Remove the default sheet created by Workbook()
-        default_sheet = wb['Sheet']
-        wb.remove(default_sheet)
-
         for sheet_name in xl.sheet_names:
             # Read the sheet into a DataFrame
             df = xl.parse(sheet_name)
@@ -50,9 +45,20 @@ for filename in os.listdir(input_folder):
             plt.savefig(plot_image_path)
             plt.close()
 
-            # Add the image to the 'Graphs' sheet
+            # Add the image to a new sheet named after the input sheet
+            if sheet_name in wb.sheetnames:
+                ws = wb[sheet_name]
+            else:
+                ws = wb.create_sheet(title=sheet_name)
+
+            # Add the image to the sheet
             img = Image(plot_image_path)
-            graphs_sheet.add_image(img, 'A1')  # Add image at the first cell; adjust as needed
+            ws.add_image(img, 'A1')  # Add image at the first cell; adjust as needed
+
+        # Remove the default sheet created by Workbook() if it was not used
+        if 'Sheet' in wb.sheetnames:
+            default_sheet = wb['Sheet']
+            wb.remove(default_sheet)
 
         # Save the new Excel file
         wb.save(output_file_path)
