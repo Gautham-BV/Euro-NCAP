@@ -1,29 +1,42 @@
-import os
 import pandas as pd
+import os
 
-# Define input and output folders
+# Define the input and output folders
 input_folder = 'Extracted Data/VRU Headform - Prediction tables'
 output_folder = 'Extracted Data/VRU Headform - Color-wise graphs'
 
-# Ensure output directory exists
+# Ensure the output folder exists
 os.makedirs(output_folder, exist_ok=True)
 
-# Process each Excel file in the input folder
-for filename in os.listdir(input_folder):
-    if filename.endswith('.xlsx'):
-        input_path = os.path.join(input_folder, filename)
-        output_path = os.path.join(output_folder, filename)
+# List all Excel files in the input folder
+excel_files = [f for f in os.listdir(input_folder) if f.endswith('.xlsx')]
 
-        # Read the Excel file
-        df = pd.read_excel(input_path, sheet_name=0)
+for excel_file in excel_files:
+    # Read the first sheet of the Excel file to get sheet names
+    input_file_path = os.path.join(input_folder, excel_file)
+    df = pd.read_excel(input_file_path, sheet_name=0)
 
-        # Extract sheet names from the second column of the first sheet
-        sheet_names = df.iloc[:, 1].dropna().unique()
+    # Get the list of names from the second column of the first sheet
+    sheet_names = df.iloc[:, 1].dropna().unique()
 
-        # Create a new Excel writer object
-        with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
-            for sheet_name in sheet_names:
-                # Create an empty DataFrame for each sheet
-                pd.DataFrame().to_excel(writer, sheet_name=sheet_name)
+    # Create a new Excel writer for the output file
+    output_file_path = os.path.join(output_folder, excel_file)
+    with pd.ExcelWriter(output_file_path, engine='openpyxl') as writer:
+        for sheet_name in sheet_names:
+            # Create a new sheet in the output file
+            sheet_data = []
 
-        print(f'Created file: {output_path} with sheets: {list(sheet_names)}')
+            # Search for the sheet name in each sheet of the input file
+            for sheet in pd.ExcelFile(input_file_path).sheet_names:
+                sheet_df = pd.read_excel(input_file_path, sheet_name=sheet)
+                
+                # Check if the sheet_name exists in the current sheet's first column
+                if sheet_name in sheet_df.iloc[:, 0].values:
+                    value = sheet_df.loc[sheet_df.iloc[:, 0] == sheet_name].iloc[0, 1]
+                    sheet_data.append([sheet, value])
+            
+            # Create a DataFrame from the collected data and write it to the sheet
+            output_df = pd.DataFrame(sheet_data, columns=['Input Sheet', 'Value'])
+            output_df.to_excel(writer, sheet_name=sheet_name, index=False)
+
+print("Processing complete. Output files have been saved.")
