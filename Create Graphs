@@ -27,13 +27,14 @@ for excel_file in excel_files:
             sheet_data = []
 
             # Search for the sheet name in each sheet of the input file
-            for sheet in pd.ExcelFile(input_file_path).sheet_names:
-                sheet_df = pd.read_excel(input_file_path, sheet_name=sheet)
-                
-                # Check if the sheet_name exists in the current sheet's first column
-                if sheet_name in sheet_df.iloc[:, 0].values:
-                    value = sheet_df.loc[sheet_df.iloc[:, 0] == sheet_name].iloc[0, 1]
-                    sheet_data.append([sheet, value])
+            for sheet_out in pd.ExcelFile(output_file_path).sheet_names:
+                for sheet_in in pd.ExcelFile(input_file_path).sheet_names:
+                    sheet_df = pd.read_excel(input_file_path, sheet_name=sheet_in)
+                    
+                    # Check if the sheet_name exists in the current sheet's first column
+                    if sheet_name in sheet_df.iloc[:, 1].values:
+                        value = sheet_df.loc[sheet_df.iloc[:, 0] == sheet_name].iloc[0, 1]
+                        sheet_data.append([sheet_out, value])
             
             # Create a DataFrame from the collected data and write it to the sheet
             output_df = pd.DataFrame(sheet_data, columns=['Car Name', 'Values'])
