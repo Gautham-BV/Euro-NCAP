@@ -36,7 +36,7 @@ for excel_file in excel_files:
                     sheet_data.append([sheet, value])
             
             # Create a DataFrame from the collected data and write it to the sheet
-            output_df = pd.DataFrame(sheet_data, columns=['Input Sheet', 'Value'])
+            output_df = pd.DataFrame(sheet_data, columns=['Car Name', 'Values'])
             output_df.to_excel(writer, sheet_name=sheet_name, index=False)
 
 print("Processing complete. Output files have been saved.")
