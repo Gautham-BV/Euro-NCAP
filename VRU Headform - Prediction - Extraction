@@ -61,9 +61,12 @@ def print_table(df):
 # Define the root directory containing all the subdirectories and files
 root_directory = "Euro NCAP"
 
+# Define the output directory for the combined files
+output_directory = "Results"
+
 # Ensure the output directory exists
-if not os.path.exists(root_directory):
-    os.makedirs(root_directory)
+if not os.path.exists(output_directory):
+    os.makedirs(output_directory)
 
 # Iterate through each folder in the root directory
 for folder_name in os.listdir(root_directory):
@@ -71,7 +74,8 @@ for folder_name in os.listdir(root_directory):
     
     # Ensure it's a directory
     if os.path.isdir(folder_path):
-        output_file = os.path.join(folder_path, f"{folder_name}_combined.xlsx")
+        # Define the path for the combined Excel file in the "Results" folder
+        output_file = os.path.join(output_directory, f"{folder_name}_combined.xlsx")
         
         # Initialize a new Excel writer for the folder
         with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
