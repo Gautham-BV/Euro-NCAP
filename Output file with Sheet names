@@ -38,7 +38,7 @@ for filename in os.listdir(input_folder):
                 for row in input_sheet.iter_rows(min_row=1, max_row=input_sheet.max_row, min_col=1, max_col=input_sheet.max_column):
                     for cell in row:
                         if cell.value == sheet_name:
-                            found_value = row[3].value if len(row) > 1 else None
+                            found_value = (row[4].value if len(row) > 1 else None)*100
                             break
                     if found_value:
                         break
