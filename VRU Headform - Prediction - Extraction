@@ -62,27 +62,26 @@ def print_table(df):
 root_directory = "Euro NCAP"
 
 # Ensure the output directory exists
-if not os.path.exists("Results"):
-    os.makedirs("Results")
+if not os.path.exists(root_directory):
+    os.makedirs(root_directory)
 
-# Iterate through each subdirectory in the root directory
-for subdir in os.listdir(root_directory):
-    subdir_path = os.path.join(root_directory, subdir)
+# Iterate through each folder in the root directory
+for folder_name in os.listdir(root_directory):
+    folder_path = os.path.join(root_directory, folder_name)
     
-    # Check if it's a directory
-    if os.path.isdir(subdir_path):
-        # Define the output file path for the combined data
-        output_file = os.path.join("Results", f"{subdir}_combined_data.xlsx")
-
-        # Initialize a new Excel writer
+    # Ensure it's a directory
+    if os.path.isdir(folder_path):
+        output_file = os.path.join(folder_path, f"{folder_name}_combined.xlsx")
+        
+        # Initialize a new Excel writer for the folder
         with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
-            # Walk through the directory tree
-            for dirpath, dirs, files in os.walk(subdir_path):
+            # Walk through the directory tree within the folder
+            for subdir, dirs, files in os.walk(folder_path):
                 for file in files:
                     # Check if the file is an Excel file
                     if file.endswith('.xlsx') or file.endswith('.xls'):
                         # Create the full file path
-                        file_path = os.path.join(dirpath, file)
+                        file_path = os.path.join(subdir, file)
                         first_word, data = extract_data_from_excel(file_path)
                         if first_word and data:
                             # Create a DataFrame from the data and take the first row as header
@@ -103,4 +102,4 @@ for subdir in os.listdir(root_directory):
                                 sheet_name = first_word if len(first_word) <= 31 else first_word[:31]  # Sheet names are limited to 31 characters
                                 df.to_excel(writer, sheet_name=sheet_name, index=False)
 
-        print(f"Data extraction complete for folder '{subdir}'. Results saved in {output_file}.")
+        print(f"Data extraction complete for {folder_name}. Results saved in {output_file}.")
