@@ -41,7 +41,8 @@ for filename in os.listdir(input_folder):
             plt.xlabel(x_label)
             plt.ylabel(y_label)
             plt.title(sheet_name)
-            
+            plt.xticks(rotation=90)  # Set x-axis labels to be vertical
+
             # Save the plot as an image
             plot_image_path = os.path.join(output_folder, f"{sheet_name}.png")
             plt.savefig(plot_image_path)
