@@ -38,10 +38,12 @@ for filename in os.listdir(input_folder):
             # Plot the data
             plt.figure()
             plt.plot(df.iloc[:, 0], df.iloc[:, 1])
-            plt.xlabel(x_label)
-            plt.ylabel(y_label)
-            plt.title(sheet_name)
-            plt.xticks(rotation=90)  # Set x-axis labels to be vertical
+            plt.xlabel(x_label, fontsize=10)
+            plt.ylabel(y_label, fontsize=10)
+            plt.title(sheet_name, fontsize=12)
+            plt.xticks(rotation=90, fontsize=8)  # Set x-axis labels to be vertical with smaller font size
+            plt.yticks(fontsize=8)  # Set y-axis labels to smaller font size
+            plt.tight_layout()  # Adjust layout to fit everything neatly
 
             # Save the plot as an image
             plot_image_path = os.path.join(output_folder, f"{sheet_name}.png")
