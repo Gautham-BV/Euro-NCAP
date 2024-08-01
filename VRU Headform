@@ -23,25 +23,29 @@ def extract_data_from_excel(file_path):
         else:
             return None, None
 
-        # Extract the 10x10 block of data from the "VRU Headform" sheet starting at "PREDICTION"
+        # Extract the data from the "VRU Headform" sheet between "PREDICTION" and "%-age"
         if "VRU Headform" in workbook.sheetnames:
             vru_headform_sheet = workbook["VRU Headform"]
             prediction_cell = None
+            percentage_cell = None
             for row in vru_headform_sheet.iter_rows():
                 for cell in row:
                     if cell.value == "PREDICTION":
                         prediction_cell = cell
+                    elif cell.value == "%-age":
+                        percentage_cell = cell
+                    if prediction_cell and percentage_cell:
                         break
-                if prediction_cell:
-                    break
 
-            if prediction_cell:
+            if prediction_cell and percentage_cell:
                 start_row = prediction_cell.row
                 start_col = prediction_cell.column
-                # Extract the 10x10 block of data
+                end_col = percentage_cell.column
+
+                # Extract the data from the rows between "PREDICTION" and "%-age"
                 data = [
                     [vru_headform_sheet.cell(row=i, column=j).value
-                     for j in range(start_col, start_col + 20)]
+                     for j in range(start_col, end_col + 1)]
                     for i in range(start_row, start_row + 10)
                 ]
     except Exception as e:
