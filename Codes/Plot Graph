@@ -30,6 +30,9 @@ for filename in os.listdir(input_folder):
             x_label = df.columns[0]
             y_label = df.columns[1]
 
+            # Compute the average of y values
+            y_avg = df.iloc[:, 1].mean()
+
             # Plot the data as a scatter plot
             plt.figure()
             plt.scatter(df.iloc[:, 0], df.iloc[:, 1])
@@ -39,6 +42,10 @@ for filename in os.listdir(input_folder):
             plt.xticks(rotation=90, fontsize=8)  # Set x-axis labels to be vertical with smaller font size
             plt.yticks(fontsize=8)  # Set y-axis labels to smaller font size
             plt.tight_layout()  # Adjust layout to fit everything neatly
+
+            # Add a horizontal yellow line for the average
+            plt.axhline(y=y_avg, color='yellow', linestyle='--', label=f'Average ({y_avg:.2f})')
+            plt.legend(loc='best')  # Show the legend
 
             # Save the plot as an image
             plot_image_path = os.path.join(output_folder, f"{sheet_name}.png")
