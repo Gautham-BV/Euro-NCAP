@@ -33,7 +33,7 @@ for file_name in os.listdir(input_folder):
             avg_value = df[col].mean()
             
             # Plot the average value as a horizontal orange line
-            ax.axhline(y=avg_value, color='orange', linestyle='--', label=f'Average: {avg_value:.2f}')
+            ax.axhline(y=avg_value, color='orange', linestyle='-', label=f'Average: {avg_value:.2f}')
             
             ax.set_xlabel(df.columns[0], fontsize=10)  # Reduce x-axis label font size
             ax.set_ylabel('%-age', fontsize=10)  # Set y-axis label to '%-age'
