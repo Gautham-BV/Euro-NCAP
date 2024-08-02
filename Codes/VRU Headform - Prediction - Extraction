@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import openpyxl
+import time
 
 def extract_data_from_excel(file_path):
     header = None
@@ -68,6 +69,9 @@ output_directory = "Extracted Data/VRU Headform - Prediction tables"
 if not os.path.exists(output_directory):
     os.makedirs(output_directory)
 
+# Record the start time
+start_time = time.time()
+
 # Iterate through each folder in the root directory
 for folder_name in os.listdir(root_directory):
     folder_path = os.path.join(root_directory, folder_name)
@@ -110,3 +114,10 @@ for folder_name in os.listdir(root_directory):
                                 df.to_excel(writer, sheet_name=sheet_name, index=False)
 
         print(f"Data extraction complete for {folder_name}. Results saved in {output_file}.")
+
+# Record the end time
+end_time = time.time()
+execution_time = end_time - start_time
+
+# Print the execution time
+print(f"\nScript executed in {execution_time:.2f} seconds.")
