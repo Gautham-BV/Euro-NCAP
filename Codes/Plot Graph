@@ -27,17 +27,20 @@ for file_name in os.listdir(input_folder):
         # Generate scatter plots
         for col in df.columns[1:]:
             fig, ax = plt.subplots()
-            ax.scatter(df[df.columns[0]], df[col], label=col)
+            ax.scatter(df[df.columns[0]], df[col], label=col, s=20)  # Reduce marker size to 20
             
-            # Add value annotations
-            for i, txt in enumerate(df[col]):
-                ax.annotate(txt, (df[df.columns[0]][i], df[col][i]))
+            # Calculate the average value for the y-axis
+            avg_value = df[col].mean()
             
-            ax.set_xlabel(df.columns[0])
-            ax.set_ylabel(col)
-            ax.set_title(f'Scatter Plot of {col} vs {df.columns[0]}')
-            ax.xaxis.set_tick_params(rotation=90)
-            ax.legend()
+            # Plot the average value as a horizontal orange line
+            ax.axhline(y=avg_value, color='orange', linestyle='--', label=f'Average: {avg_value:.2f}')
+            
+            ax.set_xlabel(df.columns[0], fontsize=10)  # Reduce x-axis label font size
+            ax.set_ylabel(col, fontsize=10)  # Reduce y-axis label font size
+            ax.set_title(f'Scatter Plot of {col} vs {df.columns[0]}', fontsize=12)  # Reduce title font size
+            ax.xaxis.set_tick_params(rotation=90, labelsize=8)  # Reduce x-axis label font size
+            ax.yaxis.set_tick_params(labelsize=8)  # Reduce y-axis label font size
+            ax.legend(fontsize=8)  # Reduce legend font size
             
             # Save plot to a BytesIO object
             img_stream = BytesIO()
@@ -63,4 +66,4 @@ for file_name in os.listdir(input_folder):
         output_file_path = os.path.join(output_folder, file_name)
         wb.save(output_file_path)
 
-print("Graphs have been added to separate sheets in the Excel files.")
+print("Graphs with adjusted text and point sizes have been added to separate sheets in the Excel files.")
