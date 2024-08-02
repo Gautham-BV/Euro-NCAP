@@ -23,15 +23,13 @@ for filename in os.listdir(input_folder):
         # Get the sheet names to be created from the first sheet's second column
         sheet_names = [cell.value for cell in input_sheet['B'] if cell.value is not None]
 
-        # Write headers in the output sheet
-        headers = ['Car Name'] + sheet_names
-        output_sheet.append(headers)
-
         # Create a dictionary to store values by car name
         car_values = {sheet_name: [] for sheet_name in sheet_names}
+        sheet_headers = []  # To keep track of sheet names for columns
 
         for input_sheet_name in input_wb.sheetnames:
             input_sheet = input_wb[input_sheet_name]
+            sheet_headers.append(input_sheet_name)
             
             # Search for the sheet names in the input sheet
             for row in input_sheet.iter_rows(min_row=1, max_row=input_sheet.max_row, min_col=1, max_col=input_sheet.max_column):
@@ -40,10 +38,14 @@ for filename in os.listdir(input_folder):
                         value = (row[4].value if len(row) > 4 else None) * 100
                         car_values[cell.value].append(value)
                         break
-        
-        # Write car data to the output sheet
+
+        # Write headers in the output sheet
+        headers = ['Car Name'] + sheet_headers
+        output_sheet.append(headers)
+
+        # Write data in transposed format
         for car_name in sheet_names:
-            row_data = [car_name] + car_values[car_name]
+            row_data = [car_name] + [car_values[car_name][i] if i < len(car_values[car_name]) else None for i in range(len(sheet_headers))]
             output_sheet.append(row_data)
 
         # Save the output workbook
