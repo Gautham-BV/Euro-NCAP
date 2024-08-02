@@ -40,7 +40,7 @@ for filename in os.listdir(input_folder):
                         break
 
         # Write headers in the output sheet
-        output_sheet.append(['Sheet Name'] + sheet_names)
+        output_sheet.append(['Car Names'] + sheet_names)
 
         # Determine the maximum number of rows for each car name
         max_rows = max(len(values) for values in car_values.values())
