@@ -55,7 +55,7 @@ for file_name in os.listdir(input_folder):
             img = Image(img_stream)
             
             # Create a new sheet with the graph title
-            sheet_title = f'{df.columns[0]}'
+            sheet_title = f'{col}'
             sheet_title = sheet_title[:31]  # Limit sheet name to 31 characters
             ws = wb.create_sheet(title=sheet_title)
             
