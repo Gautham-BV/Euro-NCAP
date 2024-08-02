@@ -5,7 +5,7 @@ from openpyxl import Workbook
 from openpyxl.drawing.image import Image
 
 input_folder = 'Extracted Data/VRU Headform - Color-wise data'
-output_folder = 'Extracted Data/VRU Headform - Color-wise graph'
+output_folder = 'Extracted Data/VRU Headform - Color-wise graphs'
 
 # Ensure the output folder exists
 os.makedirs(output_folder, exist_ok=True)
