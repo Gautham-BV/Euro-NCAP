@@ -17,38 +17,34 @@ for filename in os.listdir(input_folder):
 
         # Create a new workbook for output
         output_wb = Workbook()
+        output_sheet = output_wb.active
         output_filename = os.path.join(output_folder, filename)
         
         # Get the sheet names to be created from the first sheet's second column
         sheet_names = [cell.value for cell in input_sheet['B'] if cell.value is not None]
 
-        for sheet_name in sheet_names:
-            # Create new sheet in output file
-            output_sheet = output_wb.create_sheet(sheet_name)
+        # Write headers in the output sheet
+        headers = ['Car Name'] + sheet_names
+        output_sheet.append(headers)
+
+        # Create a dictionary to store values by car name
+        car_values = {sheet_name: [] for sheet_name in sheet_names}
+
+        for input_sheet_name in input_wb.sheetnames:
+            input_sheet = input_wb[input_sheet_name]
             
-            # Add headers 'Car Name' and 'Values'
-            output_sheet.append(['Car Name', 'Values'])
-
-            # Iterate through sheets in the input file to find the sheet names
-            for input_sheet_name in input_wb.sheetnames:
-                input_sheet = input_wb[input_sheet_name]
-                found_value = None
-                
-                # Search for the word (output sheet name) in the input sheet
-                for row in input_sheet.iter_rows(min_row=1, max_row=input_sheet.max_row, min_col=1, max_col=input_sheet.max_column):
-                    for cell in row:
-                        if cell.value == sheet_name:
-                            found_value = (row[4].value if len(row) > 1 else None)*100
-                            break
-                    if found_value:
+            # Search for the sheet names in the input sheet
+            for row in input_sheet.iter_rows(min_row=1, max_row=input_sheet.max_row, min_col=1, max_col=input_sheet.max_column):
+                for cell in row:
+                    if cell.value in sheet_names:
+                        value = (row[4].value if len(row) > 4 else None) * 100
+                        car_values[cell.value].append(value)
                         break
-                
-                # Append the data to the output sheet
-                output_sheet.append([input_sheet_name, found_value])
-
-        # Remove default sheet created by Workbook
-        if 'Sheet' in output_wb.sheetnames:
-            del output_wb['Sheet']
+        
+        # Write car data to the output sheet
+        for car_name in sheet_names:
+            row_data = [car_name] + car_values[car_name]
+            output_sheet.append(row_data)
 
         # Save the output workbook
         output_wb.save(output_filename)

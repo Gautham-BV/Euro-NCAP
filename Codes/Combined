@@ -1,0 +1,117 @@
+import os
+import pandas as pd
+import openpyxl
+import matplotlib.pyplot as plt
+from openpyxl import Workbook
+from openpyxl.drawing.image import Image
+
+def extract_data_from_excel(file_path):
+    header = None
+    data = []
+    try:
+        workbook = openpyxl.load_workbook(file_path, data_only=True)
+        if "OVERALL RATING" in workbook.sheetnames:
+            overall_rating_sheet = workbook["OVERALL RATING"]
+            first_word = None
+            for row in overall_rating_sheet.iter_rows():
+                for cell in row:
+                    if cell.value:
+                        first_word = str(cell.value)
+                        break
+                if first_word:
+                    break
+        else:
+            return None, None
+
+        if "VRU Headform" in workbook.sheetnames:
+            vru_headform_sheet = workbook["VRU Headform"]
+            prediction_cell = None
+            percentage_cell = None
+            for row in vru_headform_sheet.iter_rows():
+                for cell in row:
+                    if cell.value == "PREDICTION":
+                        prediction_cell = cell
+                    elif cell.value == "%-age":
+                        percentage_cell = cell
+                    if prediction_cell and percentage_cell:
+                        break
+
+            if prediction_cell and percentage_cell:
+                start_row = prediction_cell.row
+                start_col = prediction_cell.column
+                end_col = percentage_cell.column
+                data = [
+                    [vru_headform_sheet.cell(row=i, column=j).value
+                     for j in range(start_col, end_col + 1)]
+                    for i in range(start_row, start_row + 10)
+                ]
+    except Exception as e:
+        print(f"Error processing {file_path}: {e}")
+        return None, None
+
+    return first_word, data
+
+def generate_graphs(root_directory, graphs_folder):
+    os.makedirs(graphs_folder, exist_ok=True)
+    
+    for folder_name in os.listdir(root_directory):
+        folder_path = os.path.join(root_directory, folder_name)
+        if os.path.isdir(folder_path):
+            first_word_of_folder = folder_name.split()[0]
+
+            for subdir, dirs, files in os.walk(folder_path):
+                for file in files:
+                    if file.endswith('.xlsx') or file.endswith('.xls'):
+                        file_path = os.path.join(subdir, file)
+                        first_word, data = extract_data_from_excel(file_path)
+                        if first_word and data:
+                            df = pd.DataFrame(data)
+                            if not df.empty:
+                                df.columns = df.iloc[0]
+                                df = df[1:]
+                                df = df.dropna(how='all').dropna(axis=1, how='all')
+                                
+                                if not df.empty:
+                                    x_label = df.columns[0]
+                                    y_label = df.columns[1]
+                                    average_y = df.iloc[:, 1].mean()
+
+                                    plt.figure()
+                                    plt.scatter(df.iloc[:, 0], df.iloc[:, 1], label='Data')
+                                    plt.axhline(y=average_y, color='darkgreen', linestyle='-', linewidth=1, label=f'Average ({average_y:.2f})')
+                                    plt.xlabel(x_label, fontsize=10)
+                                    plt.ylabel(y_label, fontsize=10)
+                                    plt.title(f'{first_word_of_folder}_{os.path.splitext(file)[0]}', fontsize=12)
+                                    plt.xticks(rotation=90, fontsize=8)
+                                    plt.yticks(fontsize=8)
+                                    plt.tight_layout()
+                                    plt.legend()
+
+                                    plot_image_path = os.path.join(graphs_folder, f"{first_word_of_folder}_{os.path.splitext(file)[0]}.png")
+                                    plt.savefig(plot_image_path)
+                                    plt.close()
+
+                                    # Create a new workbook and add the image
+                                    wb = Workbook()
+                                    ws = wb.active
+                                    img = Image(plot_image_path)
+                                    ws.add_image(img, 'A1')
+                                    
+                                    # Remove default sheet if present
+                                    if 'Sheet' in wb.sheetnames:
+                                        default_sheet = wb['Sheet']
+                                        wb.remove(default_sheet)
+                                    
+                                    # Save the workbook with the image
+                                    excel_output_path = plot_image_path.replace('.png', '.xlsx')
+                                    wb.save(excel_output_path)
+                                    print(f"Graphs and workbook saved to {excel_output_path}")
+
+def main():
+    root_directory = "Euro NCAP"
+    graphs_folder = "Extracted Data/VRU Headform - Color-wise graphs"
+    
+    generate_graphs(root_directory, graphs_folder)
+
+if __name__ == "__main__":
+    main()
