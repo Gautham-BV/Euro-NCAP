@@ -22,8 +22,7 @@ for file_name in os.listdir(input_folder):
         
         # Create a new Workbook
         wb = Workbook()
-        ws = wb.active
-        ws.title = "Graphs"
+        wb.remove(wb.active)  # Remove the default sheet
         
         # Generate scatter plots
         for col in df.columns[1:]:
@@ -45,17 +44,23 @@ for file_name in os.listdir(input_folder):
             plt.savefig(img_stream, format='png')
             plt.close(fig)
             
-            # Add image to Excel
+            # Add image to Excel in a new sheet
             img_stream.seek(0)
             img = Image(img_stream)
+            
+            # Create a new sheet with the graph title
+            sheet_title = f'Scatter Plot of {col} vs {df.columns[0]}'
+            sheet_title = sheet_title[:31]  # Limit sheet name to 31 characters
+            ws = wb.create_sheet(title=sheet_title)
+            
             img.anchor = 'A1'
             ws.add_image(img)
             
-            # Add spacing between plots in Excel
+            # Adjust row height for spacing
             ws.row_dimensions[1].height = 300  # Adjust height for spacing
-            
+        
         # Save Excel file with graphs
         output_file_path = os.path.join(output_folder, file_name)
         wb.save(output_file_path)
 
-print("Graphs have been added to Excel files.")
+print("Graphs have been added to separate sheets in the Excel files.")
