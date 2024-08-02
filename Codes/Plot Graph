@@ -1,70 +1,61 @@
-import os
 import pandas as pd
 import matplotlib.pyplot as plt
+import os
 from openpyxl import Workbook
 from openpyxl.drawing.image import Image
+from io import BytesIO
 
+# Set input and output folder paths
 input_folder = 'Extracted Data/VRU Headform - Color-wise data'
 output_folder = 'Extracted Data/VRU Headform - Color-wise graphs'
 
-# Ensure the output folder exists
+# Create output folder if it doesn't exist
 os.makedirs(output_folder, exist_ok=True)
 
-# Iterate over each Excel file in the input folder
-for filename in os.listdir(input_folder):
-    if filename.endswith('.xlsx'):
-        input_file_path = os.path.join(input_folder, filename)
-        output_file_path = os.path.join(output_folder, filename)
+# Loop through each Excel file in the input folder
+for file_name in os.listdir(input_folder):
+    if file_name.endswith('.xlsx'):
+        file_path = os.path.join(input_folder, file_name)
         
-        # Load the Excel file
-        xl = pd.ExcelFile(input_file_path)
+        # Read Excel file
+        df = pd.read_excel(file_path)
         
-        # Create a new Excel workbook for the output
+        # Create a new Workbook
         wb = Workbook()
+        ws = wb.active
+        ws.title = "Graphs"
         
-        for sheet_name in xl.sheet_names:
-            # Read the sheet into a DataFrame
-            df = xl.parse(sheet_name)
-
-            # Extract x and y axis labels from the first row
-            x_label = df.columns[0]
-            y_label = df.columns[1]
-
-            # Compute the average of the y-values
-            average_y = df.iloc[:, 1].mean()
-
-            # Plot the data as a scatter plot
-            plt.figure()
-            plt.scatter(df.iloc[:, 0], df.iloc[:, 1], label='Data')
-            plt.axhline(y=average_y, color='darkgreen', linestyle='-', linewidth=1, label=f'Average ({average_y:.2f})')
-            plt.xlabel(x_label, fontsize=10)
-            plt.ylabel(y_label, fontsize=10)
-            plt.title(sheet_name, fontsize=12)
-            plt.xticks(rotation=90, fontsize=8)  # Set x-axis labels to be vertical with smaller font size
-            plt.yticks(fontsize=8)  # Set y-axis labels to smaller font size
-            plt.tight_layout()  # Adjust layout to fit everything neatly
-            plt.legend()  # Add legend to the plot
-
-            # Save the plot as an image
-            plot_image_path = os.path.join(output_folder, f"{sheet_name}.png")
-            plt.savefig(plot_image_path)
-            plt.close()
-
-            # Add the image to a new sheet named after the input sheet
-            if sheet_name in wb.sheetnames:
-                ws = wb[sheet_name]
-            else:
-                ws = wb.create_sheet(title=sheet_name)
-
-            # Add the image to the sheet
-            img = Image(plot_image_path)
-            ws.add_image(img, 'A1')  # Add image at the first cell; adjust as needed
-
-        # Remove the default sheet created by Workbook() if it was not used
-        if 'Sheet' in wb.sheetnames:
-            default_sheet = wb['Sheet']
-            wb.remove(default_sheet)
-
-        # Save the new Excel file
+        # Generate scatter plots
+        for col in df.columns[1:]:
+            fig, ax = plt.subplots()
+            ax.scatter(df[df.columns[0]], df[col], label=col)
+            
+            # Add value annotations
+            for i, txt in enumerate(df[col]):
+                ax.annotate(txt, (df[df.columns[0]][i], df[col][i]))
+            
+            ax.set_xlabel(df.columns[0])
+            ax.set_ylabel(col)
+            ax.set_title(f'Scatter Plot of {col} vs {df.columns[0]}')
+            ax.xaxis.set_tick_params(rotation=90)
+            ax.legend()
+            
+            # Save plot to a BytesIO object
+            img_stream = BytesIO()
+            plt.savefig(img_stream, format='png')
+            plt.close(fig)
+            
+            # Add image to Excel
+            img_stream.seek(0)
+            img = Image(img_stream)
+            img.anchor = 'A1'
+            ws.add_image(img)
+            
+            # Add spacing between plots in Excel
+            ws.row_dimensions[1].height = 300  # Adjust height for spacing
+            
+        # Save Excel file with graphs
+        output_file_path = os.path.join(output_folder, file_name)
         wb.save(output_file_path)
-        print(f"Graphs saved to {output_file_path}")
+
+print("Graphs have been added to Excel files.")
