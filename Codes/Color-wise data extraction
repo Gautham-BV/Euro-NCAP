@@ -2,7 +2,7 @@ import os
 from openpyxl import load_workbook, Workbook
 
 input_folder = 'Extracted Data/VRU Headform - Prediction tables'
-output_folder = 'Extracted Data/VRU Headform - Color-wise graphs'
+output_folder = 'Extracted Data/VRU Headform - Color-wise data'
 
 # Ensure output folder exists
 os.makedirs(output_folder, exist_ok=True)
