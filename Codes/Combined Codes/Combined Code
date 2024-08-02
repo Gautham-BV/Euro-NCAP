@@ -1,0 +1,117 @@
+import os
+import pandas as pd
+import openpyxl
+import time
+from openpyxl import load_workbook, Workbook
+
+def extract_data_from_excel(file_path):
+    header = None
+    data = []
+    try:
+        workbook = openpyxl.load_workbook(file_path, data_only=True)
+        
+        if "OVERALL RATING" in workbook.sheetnames:
+            overall_rating_sheet = workbook["OVERALL RATING"]
+            first_word = None
+            for row in overall_rating_sheet.iter_rows():
+                for cell in row:
+                    if cell.value:
+                        first_word = str(cell.value)
+                        break
+                if first_word:
+                    break
+        else:
+            return None, None
+
+        if "VRU Headform" in workbook.sheetnames:
+            vru_headform_sheet = workbook["VRU Headform"]
+            prediction_cell = None
+            percentage_cell = None
+            for row in vru_headform_sheet.iter_rows():
+                for cell in row:
+                    if cell.value == "PREDICTION":
+                        prediction_cell = cell
+                    elif cell.value == "%-age":
+                        percentage_cell = cell
+                    if prediction_cell and percentage_cell:
+                        break
+
+            if prediction_cell and percentage_cell:
+                start_row = prediction_cell.row
+                start_col = prediction_cell.column
+                end_col = percentage_cell.column
+
+                data = [
+                    [vru_headform_sheet.cell(row=i, column=j).value
+                     for j in range(start_col, end_col + 1)]
+                    for i in range(start_row, start_row + 10)
+                ]
+    except Exception as e:
+        print(f"Error processing {file_path}: {e}")
+        return None, None
+
+    return first_word, data
+
+def print_table(df):
+    print(df.to_string(index=False))
+
+root_directory = "Euro NCAP"
+output_directory = "Extracted Data/VRU Headform (C) - Color-wise data"
+
+if not os.path.exists(output_directory):
+    os.makedirs(output_directory)
+
+start_time = time.time()
+
+for folder_name in os.listdir(root_directory):
+    folder_path = os.path.join(root_directory, folder_name)
+    
+    if os.path.isdir(folder_path):
+        first_word_of_folder = folder_name.split()[0]
+        car_values = {}
+        sheet_names = set()
+        
+        for subdir, dirs, files in os.walk(folder_path):
+            for file in files:
+                if file.endswith('.xlsx') or file.endswith('.xls'):
+                    file_path = os.path.join(subdir, file)
+                    first_word, data = extract_data_from_excel(file_path)
+                    if first_word and data:
+                        df = pd.DataFrame(data)
+                        if not df.empty:
+                            df.columns = df.iloc[0]
+                            df = df[1:]
+                            df = df.dropna(how='all').dropna(axis=1, how='all')
+
+                            print(f"\nExtracted Word: {first_word}")
+                            print("Extracted Table:")
+                            print_table(df)
+
+                            if first_word not in car_values:
+                                car_values[first_word] = {column: [] for column in df.columns}
+                            for column in df.columns:
+                                car_values[first_word][column].extend(df[column].tolist())
+                            sheet_names.update(df.columns)
+        
+        output_filename = os.path.join(output_directory, f"{first_word_of_folder}_cars_combined.xlsx")
+        output_wb = Workbook()
+        output_sheet = output_wb.active
+
+        output_sheet.append(['Car Names'] + list(sheet_names))
+
+        max_rows = max(len(values) for car in car_values.values() for values in car.values())
+
+        for i in range(max_rows):
+            row_data = [first_word_of_folder if i == 0 else None]
+            for sheet_name in sheet_names:
+                for car, values in car_values.items():
+                    row_data.append(values[sheet_name][i] if i < len(values[sheet_name]) else None)
+            output_sheet.append(row_data)
+
+        output_wb.save(output_filename)
+        print(f'Processed and saved: {output_filename}')
+
+end_time = time.time()
+execution_time = end_time - start_time
+
+print(f"\nScript executed in {execution_time:.2f} seconds.")
