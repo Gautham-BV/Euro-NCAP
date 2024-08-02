@@ -27,13 +27,17 @@ for file_name in os.listdir(input_folder):
         # Generate scatter plots
         for col in df.columns[1:]:
             fig, ax = plt.subplots()
-            ax.scatter(df[df.columns[0]], df[col], label=col, s=2, c='red')  # Set marker size to 1
+            scatter = ax.scatter(df[df.columns[0]], df[col], label=col, s=1, c='red')  # Set marker size to 1 and color to red
             
             # Calculate the average value for the y-axis
             avg_value = df[col].mean()
             
             # Plot the average value as a horizontal orange line
-            ax.axhline(y=avg_value, color='orange', linestyle='-', label=f'Average: {avg_value:.2f}')
+            ax.axhline(y=avg_value, color='orange', linestyle='--', label=f'Average: {avg_value:.2f}')
+            
+            # Annotate each point with its value
+            for i, (x, y) in enumerate(zip(df[df.columns[0]], df[col])):
+                ax.annotate(f'{y:.2f}', (x, y), fontsize=5, color='black', ha='right', va='bottom')
             
             ax.set_xlabel(df.columns[0], fontsize=10)  # Reduce x-axis label font size
             ax.set_ylabel('%-age', fontsize=10)  # Set y-axis label to '%-age'
@@ -69,4 +73,4 @@ for file_name in os.listdir(input_folder):
         output_file_path = os.path.join(output_folder, file_name)
         wb.save(output_file_path)
 
-print("Graphs with reduced point size have been added to separate sheets in the Excel files.")
+print("Graphs with point values displayed near each point have been added to separate sheets in the Excel files.")
