@@ -38,7 +38,7 @@ for file_name in os.listdir(input_folder):
         # Generate scatter plots
         for col in df.columns[1:]:
             fig, ax = plt.subplots()
-            scatter = ax.scatter(df[df.columns[0]], df[col], label=col, s=5, c='red')  # Set marker size to 1 and color to red
+            scatter = ax.scatter(df[df.columns[0]], df[col], label=col, s=8, c='red')  # Set marker size to 1 and color to red
             
             # Calculate the average value for the y-axis
             avg_value = df[col].mean()
