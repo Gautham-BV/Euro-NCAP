@@ -27,7 +27,7 @@ for file_name in os.listdir(input_folder):
         # Generate scatter plots
         for col in df.columns[1:]:
             fig, ax = plt.subplots()
-            ax.scatter(df[df.columns[0]], df[col], label=col, s=20)  # Reduce marker size to 20
+            ax.scatter(df[df.columns[0]], df[col], label=col, s=1)  # Set marker size to 1
             
             # Calculate the average value for the y-axis
             avg_value = df[col].mean()
@@ -40,7 +40,7 @@ for file_name in os.listdir(input_folder):
             ax.set_title(f'{col}', fontsize=12)  # Reduce title font size
             ax.xaxis.set_tick_params(rotation=90, labelsize=6)  # Reduce x-axis label font size
             ax.yaxis.set_tick_params(labelsize=8)  # Reduce y-axis label font size
-            ax.legend(fontsize=2)  # Reduce legend font size
+            ax.legend(fontsize=8)  # Adjust legend font size
             
             # Adjust layout to make sure labels are fully visible
             plt.tight_layout()
@@ -69,4 +69,4 @@ for file_name in os.listdir(input_folder):
         output_file_path = os.path.join(output_folder, file_name)
         wb.save(output_file_path)
 
-print("Graphs with adjusted layout for full label visibility have been added to separate sheets in the Excel files.")
+print("Graphs with reduced point size have been added to separate sheets in the Excel files.")
