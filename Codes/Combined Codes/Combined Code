@@ -87,7 +87,7 @@ def main():
             combined_df = pd.DataFrame()
 
             # Placeholder for column names
-            column_names = ["First Word"]
+            column_names = ["Car Names"]
 
             # Walk through the directory tree within the folder
             for subdir, dirs, files in os.walk(folder_path):
@@ -109,6 +109,7 @@ def main():
                                 # Capture the values from the second column of the extracted table
                                 if len(column_names) == 1 and len(df.columns) > 1:
                                     column_names.extend(df.iloc[:, 1].tolist())
+                                column_names[-1]="Predicted headform score (excluding blue points)"
                                 
                                 # Append the first word and the last column of the extracted table as a new row
                                 new_row = [first_word] + df.iloc[:, -1].tolist()
