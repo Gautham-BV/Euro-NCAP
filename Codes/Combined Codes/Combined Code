@@ -3,6 +3,7 @@ import pandas as pd
 import openpyxl
 import time
 import logging
+import re
 
 # Set up logging configuration
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -33,12 +34,18 @@ def extract_vru_headform_data(sheet):
 
 def extract_data_from_excel(file_path):
     try:
-        # Extract the part of the file name before '_SUMMARYSpreadsheet'
-        file_name = os.path.basename(file_path)
-        first_word = file_name.split('SUMMARY')[0]
-
         # Load the workbook and sheets
         workbook = openpyxl.load_workbook(file_path, data_only=True)
+        
+        # Extract the file name till the year
+        file_name = os.path.basename(file_path)
+        match = re.match(r"(\D*)(\d{4})", file_name)
+        if match:
+            base_name = match.group(1).strip().replace('_', ' ')
+            year = match.group(2)
+            first_word = f"{base_name} {year}"
+        else:
+            first_word = None
 
         # Extract the data from the "VRU Headform" sheet
         if "VRU Headform" in workbook.sheetnames:
@@ -69,8 +76,7 @@ def main():
         
         # Ensure it's a directory
         if os.path.isdir(folder_path):
-            first_word_of_folder = folder_name.split()[0]
-            output_file = os.path.join(output_directory, f"{first_word_of_folder}_cars_combined.xlsx")
+            output_file = os.path.join(output_directory, f"{folder_name.split()[0]}_cars_combined.xlsx")
             
             # Initialize a DataFrame to collect all data
             combined_df = pd.DataFrame()
