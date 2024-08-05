@@ -5,6 +5,7 @@ from openpyxl import Workbook
 from openpyxl.drawing.image import Image
 from io import BytesIO
 import numpy as np
+import time
 
 # Set input and output folder paths
 input_folder = 'Extracted Data/VRU Headform (C) - Color-wise data'
@@ -12,6 +13,9 @@ output_folder = 'Extracted Data/VRU Headform (C) - Color-wise graphs'
 
 # Create output folder if it doesn't exist
 os.makedirs(output_folder, exist_ok=True)
+
+# Start timing the execution
+start_time = time.time()
 
 # Loop through each Excel file in the input folder
 for file_name in os.listdir(input_folder):
@@ -34,7 +38,7 @@ for file_name in os.listdir(input_folder):
         
         # Constants to control the layout
         max_cols = 3  # Number of columns
-        row_increment = 20  # Number of rows between graphs
+        row_increment = 30  # Number of rows between graphs
         col_increment = 10  # Number of columns between graphs
         
         # Generate scatter plots
@@ -82,4 +86,9 @@ for file_name in os.listdir(input_folder):
         output_file_path = os.path.join(output_folder, file_name)
         wb.save(output_file_path)
 
-print("Graphs have been added to the same sheet named 'Graphs' in the Excel files arranged in three columns without overlapping.")
+# End timing the execution
+end_time = time.time()
+execution_time = end_time - start_time
+
+print(f"Graphs have been added to the same sheet named 'Graphs' in the Excel files arranged in three columns without overlapping.")
+print(f"Execution time: {execution_time:.2f} seconds")

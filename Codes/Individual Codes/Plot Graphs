@@ -5,6 +5,7 @@ from openpyxl import Workbook
 from openpyxl.drawing.image import Image
 from io import BytesIO
 import numpy as np
+import time
 
 # Set input and output folder paths
 input_folder = 'Extracted Data/VRU Headform - Color-wise data'
@@ -13,15 +14,8 @@ output_folder = 'Extracted Data/VRU Headform - Color-wise graphs'
 # Create output folder if it doesn't exist
 os.makedirs(output_folder, exist_ok=True)
 
-# Function to adjust annotation position to avoid overlap
-def adjust_annotation(ax, x, y, text, offset=0.5):
-    """Adjust annotation position to avoid overlap."""
-    annotations = []
-    for (x_text, y_text) in annotations:
-        if np.abs(x - x_text) < offset and np.abs(y - y_text) < offset:
-            return x + offset, y + offset
-    annotations.append((x, y))
-    return x, y
+# Start timing the execution
+start_time = time.time()
 
 # Loop through each Excel file in the input folder
 for file_name in os.listdir(input_folder):
@@ -35,23 +29,28 @@ for file_name in os.listdir(input_folder):
         wb = Workbook()
         wb.remove(wb.active)  # Remove the default sheet
         
+        # Create a sheet named 'Graphs'
+        ws = wb.create_sheet(title='Graphs')
+        
+        # Initial positions for the first graph
+        row_position = 1
+        col_position = 1
+        
+        # Constants to control the layout
+        max_cols = 3  # Number of columns
+        row_increment = 30  # Number of rows between graphs
+        col_increment = 10  # Number of columns between graphs
+        
         # Generate scatter plots
-        for col in df.columns[1:]:
+        for i, col in enumerate(df.columns[1:]):
             fig, ax = plt.subplots()
-            scatter = ax.scatter(df[df.columns[0]], df[col], label=col, s=8, c='red')  # Set marker size to 1 and color to red
+            scatter = ax.scatter(df[df.columns[0]], df[col], label=col, s=8, c='red')  # Set marker size to 8 and color to red
             
             # Calculate the average value for the y-axis
             avg_value = df[col].mean()
             
             # Plot the average value as a horizontal orange line
             ax.axhline(y=avg_value, color='orange', linestyle='-', label=f'Average: {avg_value:.2f}')
-            
-            # Annotate each point with its value
-            # # # # # # #
-            # annotations = []  # List to keep track of annotation positions
-            # for x, y in zip(df[df.columns[0]], df[col]):
-            #     x_text, y_text = adjust_annotation(ax, x, y, f'{y:.2f}')
-            #     ax.annotate(f'{y:.2f}', (x_text, y_text), fontsize=5, color='black', ha='right', va='bottom')
             
             ax.set_xlabel(df.columns[0], fontsize=10)  # Reduce x-axis label font size
             ax.set_ylabel('%-age', fontsize=10)  # Set y-axis label to '%-age'
@@ -68,23 +67,28 @@ for file_name in os.listdir(input_folder):
             plt.savefig(img_stream, format='png', bbox_inches='tight')  # Use bbox_inches='tight' to crop extra whitespace
             plt.close(fig)
             
-            # Add image to Excel in a new sheet
+            # Add image to Excel in the 'Graphs' sheet
             img_stream.seek(0)
             img = Image(img_stream)
             
-            # Create a new sheet with the graph title
-            sheet_title = f'{col}'
-            sheet_title = sheet_title[:31]  # Limit sheet name to 31 characters
-            ws = wb.create_sheet(title=sheet_title)
-            
-            img.anchor = 'A1'
+            # Calculate anchor position for the image
+            img.anchor = ws.cell(row=row_position, column=col_position).coordinate
             ws.add_image(img)
             
-            # Adjust row height for spacing
-            ws.row_dimensions[1].height = 300  # Adjust height for spacing
-        
+            # Update row and column positions for the next graph
+            if (i + 1) % max_cols == 0:
+                row_position += row_increment  # Move to the next row block after filling max_cols
+                col_position = 1  # Reset to the first column
+            else:
+                col_position += col_increment  # Move to the next column
+
         # Save Excel file with graphs
         output_file_path = os.path.join(output_folder, file_name)
         wb.save(output_file_path)
 
-print("Graphs with adjusted annotation positions to avoid overlap have been added to separate sheets in the Excel files.")
+# End timing the execution
+end_time = time.time()
+execution_time = end_time - start_time
+
+print(f"Graphs have been added to the same sheet named 'Graphs' in the Excel files arranged in three columns without overlapping.")
+print(f"Execution time: {execution_time:.2f} seconds")
