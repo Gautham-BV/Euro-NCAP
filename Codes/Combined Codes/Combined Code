@@ -1,88 +1,86 @@
 import os
 import pandas as pd
 import openpyxl
-import time
+from datetime import datetime
 
-def extract_car_name(sheet):
-    car_name = None
-    for row in sheet.iter_rows(values_only=True):
-        for cell in row:
-            if cell:
-                car_name = cell
-                return car_name
-    return car_name
-
-def extract_vru_headform_data(sheet):
-    prediction_column = None
-    percentage_column = None
-    data_start_row = None
-    extracted_data = []
-    
-    for row_idx, row in enumerate(sheet.iter_rows(values_only=True)):
-        if "PREDICTION" in row:
-            prediction_column = row.index("PREDICTION")
-            if "%-age" in row:
-                percentage_column = row.index("%-age")
-                data_start_row = row_idx
-                break
-
-    if prediction_column is not None and percentage_column is not None and data_start_row is not None:
-        for row in sheet.iter_rows(min_row=data_start_row+1, max_row=data_start_row+10, values_only=True):
-            extracted_data.append(row[prediction_column:percentage_column+1])
-    
-    return extracted_data
-
+# Define root and output directories
 root_directory = "Euro NCAP"
 output_directory = "Extracted Data/VRU Headform (C) - Color-wise data"
 
-if not os.path.exists(output_directory):
-    os.makedirs(output_directory)
-
-start_time = time.time()
-
-for folder in os.listdir(root_directory):
-    folder_path = os.path.join(root_directory, folder)
+def extract_data_from_excel(file_path):
+    # Load the workbook and sheets
+    workbook = openpyxl.load_workbook(file_path, data_only=True)
+    overall_rating_sheet = workbook.get_sheet_by_name("OVERALL RATING")
+    vru_headform_sheet = workbook.get_sheet_by_name("VRU Headform")
     
-    if os.path.isdir(folder_path):
-        output_file_name = f"{folder.split()[0]}_combined_data.xlsx"
-        output_file_path = os.path.join(output_directory, output_file_name)
+    # Extract Car Name from "OVERALL RATING" sheet
+    car_name = overall_rating_sheet.cell(row=1, column=1).value
+    
+    # Locate "PREDICTION" and "%-age" cells in "VRU Headform" sheet
+    prediction_col = None
+    percentage_col = None
+    for row in vru_headform_sheet.iter_rows(values_only=True):
+        if "PREDICTION" in row:
+            prediction_col = row.index("PREDICTION") + 1
+        if "%-age" in row:
+            percentage_col = row.index("%-age") + 1
+        if prediction_col and percentage_col:
+            break
+    
+    # Extract table data
+    if prediction_col and percentage_col:
+        data = []
+        for row in vru_headform_sheet.iter_rows(min_row=2, max_row=11, min_col=prediction_col, max_col=percentage_col, values_only=True):
+            data.append(row)
+    
+        # Print Car Name and Extracted Table
+        print(f"Car Name: {car_name}")
+        print("Extracted Table:")
+        for row in data:
+            print(row)
         
-        car_names = ["Car Names"]
-        combined_data = []
-        
-        for file in os.listdir(folder_path):
+        return car_name, [row[1] for row in data]
+    else:
+        print(f"PREDICTION or %-age columns not found in {file_path}")
+        return None, []
+
+def process_folder(folder_path):
+    # Create output file path
+    folder_name = os.path.basename(folder_path)
+    output_file = os.path.join(output_directory, f"{folder_name.split()[0]}_combined_data.xlsx")
+    
+    # Initialize DataFrame to store results
+    combined_data = pd.DataFrame(columns=["Car Names", "%-age"])
+    
+    # Traverse Excel files in the folder
+    for root, _, files in os.walk(folder_path):
+        for file in files:
             if file.endswith(".xlsx"):
-                file_path = os.path.join(folder_path, file)
-                try:
-                    overall_rating_sheet = pd.read_excel(file_path, sheet_name='OVERALL RATING')
-                    vru_headform_sheet = pd.read_excel(file_path, sheet_name='VRU Headform')
-                    
-                    car_name = extract_car_name(overall_rating_sheet)
-                    vru_headform_data = extract_vru_headform_data(vru_headform_sheet)
-                    
-                    if car_name:
-                        car_names.append(car_name)
-                        combined_data.append(vru_headform_data)
-                        
-                        print(f"Extracted car name: {car_name}")
-                        print("Extracted VRU Headform data:")
-                        for row in vru_headform_data:
-                            print(row)
+                file_path = os.path.join(root, file)
+                car_name, percentages = extract_data_from_excel(file_path)
                 
-                except Exception as e:
-                    print(f"Failed to process file {file_path}: {e}")
-        
-        # Create the output DataFrame
-        output_df = pd.DataFrame(combined_data)
-        output_df.insert(0, "Car Names", car_names)
-        
-        # Save to Excel
-        with pd.ExcelWriter(output_file_path) as writer:
-            output_df.to_excel(writer, index=False)
-        
-        print(f"Created output file: {output_file_path}")
+                if car_name:
+                    # Append data to DataFrame
+                    for percentage in percentages:
+                        combined_data = combined_data.append({"Car Names": car_name, "%-age": percentage}, ignore_index=True)
+    
+    # Save to Excel file
+    combined_data.to_excel(output_file, index=False)
+    print(f"Data saved to {output_file}")
 
-end_time = time.time()
-execution_time = end_time - start_time
+def main():
+    start_time = datetime.now()
+    print(f"Execution started at: {start_time}")
+    
+    # Process each folder in the root directory
+    for folder_name in os.listdir(root_directory):
+        folder_path = os.path.join(root_directory, folder_name)
+        if os.path.isdir(folder_path):
+            process_folder(folder_path)
+    
+    end_time = datetime.now()
+    print(f"Execution ended at: {end_time}")
+    print(f"Total execution time: {end_time - start_time}")
 
-print(f"Processing complete. Execution time: {execution_time} seconds.")
+if __name__ == "__main__":
+    main()
