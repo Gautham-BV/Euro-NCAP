@@ -4,9 +4,11 @@ import openpyxl
 import time
 import logging
 
+# Set up logging configuration
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def extract_first_word(sheet):
+    # Extract the first word from the "OVERALL RATING" sheet
     for row in sheet.iter_rows():
         for cell in row:
             if cell.value:
@@ -14,6 +16,7 @@ def extract_first_word(sheet):
     return None
 
 def extract_vru_headform_data(sheet):
+    # Extract the data from the "VRU Headform" sheet between "PREDICTION" and "%-age"
     prediction_cell = None
     percentage_cell = None
     for row in sheet.iter_rows():
@@ -38,14 +41,17 @@ def extract_vru_headform_data(sheet):
 
 def extract_data_from_excel(file_path):
     try:
+        # Load the workbook and sheets
         workbook = openpyxl.load_workbook(file_path, data_only=True)
         
+        # Extract the first word from the "OVERALL RATING" sheet
         if "OVERALL RATING" in workbook.sheetnames:
             overall_rating_sheet = workbook["OVERALL RATING"]
             first_word = extract_first_word(overall_rating_sheet)
         else:
             return None, None
 
+        # Extract the data from the "VRU Headform" sheet
         if "VRU Headform" in workbook.sheetnames:
             vru_headform_sheet = workbook["VRU Headform"]
             data = extract_vru_headform_data(vru_headform_sheet)
@@ -57,21 +63,22 @@ def extract_data_from_excel(file_path):
         logging.error(f"Error processing {file_path}: {e}")
         return None, None
 
-def print_table(df):
-    logging.info("\n" + df.to_string(index=False))
-
 def main():
+    # Define the root and output directories
     root_directory = "Euro NCAP"
     output_directory = "Extracted Data/VRU Headform (C) - Color-wise data"
 
+    # Ensure the output directory exists
     if not os.path.exists(output_directory):
         os.makedirs(output_directory)
 
     start_time = time.time()
 
+    # Iterate through each folder in the root directory
     for folder_name in os.listdir(root_directory):
         folder_path = os.path.join(root_directory, folder_name)
         
+        # Ensure it's a directory
         if os.path.isdir(folder_path):
             first_word_of_folder = folder_name.split()[0]
             output_file = os.path.join(output_directory, f"{first_word_of_folder}_cars_combined.xlsx")
@@ -79,6 +86,10 @@ def main():
             # Initialize a DataFrame to collect all data
             combined_df = pd.DataFrame()
 
+            # Placeholder for column names
+            column_names = ["First Word"]
+
+            # Walk through the directory tree within the folder
             for subdir, dirs, files in os.walk(folder_path):
                 for file in files:
                     if file.endswith('.xlsx') or file.endswith('.xls'):
@@ -90,14 +101,32 @@ def main():
                                 df.columns = df.iloc[0]
                                 df = df[1:]
                                 df = df.dropna(how='all').dropna(axis=1, how='all')
+
+                                # Print the extracted table (df) every time
+                                print(f"\nExtracted Table from file {file}:")
+                                print(df)
+                                
+                                # Capture the column names from the second column of the extracted table
+                                if len(column_names) == 1:
+                                    column_names.extend(df.columns[1:].tolist())
                                 
                                 # Append the first word and the last column of the extracted table as a new row
                                 new_row = [first_word] + df.iloc[:, -1].tolist()
                                 combined_df = pd.concat([combined_df, pd.DataFrame([new_row])], ignore_index=True)
 
-            # Save the combined data to the "Data" sheet
+            # Print the combined DataFrame before saving to Excel
             if not combined_df.empty:
-                combined_df.columns = ["First Word"] + [f"Column {i+1}" for i in range(combined_df.shape[1] - 1)]
+                if len(column_names) < combined_df.shape[1]:
+                    # Extend column names with default names if not enough provided
+                    column_names.extend([f"Column {i+1}" for i in range(len(column_names), combined_df.shape[1])])
+                combined_df.columns = column_names[:combined_df.shape[1]]  # Ensure exact match
+
+                # Print the combined DataFrame and column names
+                print(f"\nCombined DataFrame for {folder_name}:")
+                print(combined_df)
+                print(f"Column names: {combined_df.columns.tolist()}")
+
+                # Save the combined data to the "Data" sheet
                 with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
                     combined_df.to_excel(writer, sheet_name="Data", index=False)
 
