@@ -22,6 +22,7 @@ for filename in os.listdir(input_folder):
         # Create a new workbook for output
         output_wb = Workbook()
         output_sheet = output_wb.active
+        output_sheet.title = "Data"
         output_filename = os.path.join(output_folder, filename)
         
         # Get the sheet names to be created from the first sheet's second column
