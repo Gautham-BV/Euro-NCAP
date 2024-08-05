@@ -106,9 +106,9 @@ def main():
                                 print(f"\nExtracted Table from file {file}:")
                                 print(df)
                                 
-                                # Capture the column names from the second column of the extracted table
-                                if len(column_names) == 1:
-                                    column_names.extend(df.columns[1:].tolist())
+                                # Capture the values from the second column of the extracted table
+                                if len(column_names) == 1 and len(df.columns) > 1:
+                                    column_names.extend(df.iloc[:, 1].tolist())
                                 
                                 # Append the first word and the last column of the extracted table as a new row
                                 new_row = [first_word] + df.iloc[:, -1].tolist()
