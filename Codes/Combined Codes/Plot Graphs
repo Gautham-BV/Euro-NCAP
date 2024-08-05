@@ -28,12 +28,17 @@ for file_name in os.listdir(input_folder):
         # Create a sheet named 'Graphs'
         ws = wb.create_sheet(title='Graphs')
         
-        # Initial row and column positions for the first graph
+        # Initial positions for the first graph
         row_position = 1
         col_position = 1
         
+        # Constants to control the layout
+        max_cols = 3  # Number of columns
+        row_increment = 20  # Number of rows between graphs
+        col_increment = 10  # Number of columns between graphs
+        
         # Generate scatter plots
-        for col in df.columns[1:]:
+        for i, col in enumerate(df.columns[1:]):
             fig, ax = plt.subplots()
             scatter = ax.scatter(df[df.columns[0]], df[col], label=col, s=8, c='red')  # Set marker size to 8 and color to red
             
@@ -63,14 +68,18 @@ for file_name in os.listdir(input_folder):
             img = Image(img_stream)
             
             # Calculate anchor position for the image
-            img.anchor = f'A{row_position}'
+            img.anchor = ws.cell(row=row_position, column=col_position).coordinate
             ws.add_image(img)
             
-            # Increase row position for the next graph, with a gap of 25 rows
-            row_position += 25
-        
+            # Update row and column positions for the next graph
+            if (i + 1) % max_cols == 0:
+                row_position += row_increment  # Move to the next row block after filling max_cols
+                col_position = 1  # Reset to the first column
+            else:
+                col_position += col_increment  # Move to the next column
+
         # Save Excel file with graphs
         output_file_path = os.path.join(output_folder, file_name)
         wb.save(output_file_path)
 
-print("Graphs have been added to the same sheet named 'Graphs' in the Excel files without overlapping.")
+print("Graphs have been added to the same sheet named 'Graphs' in the Excel files arranged in three columns without overlapping.")
