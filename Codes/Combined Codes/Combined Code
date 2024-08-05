@@ -1,86 +1,111 @@
 import os
 import pandas as pd
 import openpyxl
-from datetime import datetime
+import time
+import logging
 
-# Define root and output directories
-root_directory = "Euro NCAP"
-output_directory = "Extracted Data/VRU Headform (C) - Color-wise data"
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+def extract_first_word(sheet):
+    for row in sheet.iter_rows():
+        for cell in row:
+            if cell.value:
+                return str(cell.value).split()[0]
+    return None
+
+def extract_vru_headform_data(sheet):
+    prediction_cell = None
+    percentage_cell = None
+    for row in sheet.iter_rows():
+        for cell in row:
+            if cell.value == "PREDICTION":
+                prediction_cell = cell
+            elif cell.value == "%-age":
+                percentage_cell = cell
+            if prediction_cell and percentage_cell:
+                break
+    
+    if prediction_cell and percentage_cell:
+        start_row = prediction_cell.row
+        start_col = prediction_cell.column
+        end_col = percentage_cell.column
+        data = [
+            [sheet.cell(row=i, column=j).value for j in range(start_col, end_col + 1)]
+            for i in range(start_row, start_row + 10)
+        ]
+        return data
+    return None
 
 def extract_data_from_excel(file_path):
-    # Load the workbook and sheets
-    workbook = openpyxl.load_workbook(file_path, data_only=True)
-    overall_rating_sheet = workbook.get_sheet_by_name("OVERALL RATING")
-    vru_headform_sheet = workbook.get_sheet_by_name("VRU Headform")
-    
-    # Extract Car Name from "OVERALL RATING" sheet
-    car_name = overall_rating_sheet.cell(row=1, column=1).value
-    
-    # Locate "PREDICTION" and "%-age" cells in "VRU Headform" sheet
-    prediction_col = None
-    percentage_col = None
-    for row in vru_headform_sheet.iter_rows(values_only=True):
-        if "PREDICTION" in row:
-            prediction_col = row.index("PREDICTION") + 1
-        if "%-age" in row:
-            percentage_col = row.index("%-age") + 1
-        if prediction_col and percentage_col:
-            break
-    
-    # Extract table data
-    if prediction_col and percentage_col:
-        data = []
-        for row in vru_headform_sheet.iter_rows(min_row=2, max_row=11, min_col=prediction_col, max_col=percentage_col, values_only=True):
-            data.append(row)
-    
-        # Print Car Name and Extracted Table
-        print(f"Car Name: {car_name}")
-        print("Extracted Table:")
-        for row in data:
-            print(row)
+    try:
+        workbook = openpyxl.load_workbook(file_path, data_only=True)
         
-        return car_name, [row[1] for row in data]
-    else:
-        print(f"PREDICTION or %-age columns not found in {file_path}")
-        return None, []
+        if "OVERALL RATING" in workbook.sheetnames:
+            overall_rating_sheet = workbook["OVERALL RATING"]
+            first_word = extract_first_word(overall_rating_sheet)
+        else:
+            return None, None
 
-def process_folder(folder_path):
-    # Create output file path
-    folder_name = os.path.basename(folder_path)
-    output_file = os.path.join(output_directory, f"{folder_name.split()[0]}_combined_data.xlsx")
-    
-    # Initialize DataFrame to store results
-    combined_data = pd.DataFrame(columns=["Car Names", "%-age"])
-    
-    # Traverse Excel files in the folder
-    for root, _, files in os.walk(folder_path):
-        for file in files:
-            if file.endswith(".xlsx"):
-                file_path = os.path.join(root, file)
-                car_name, percentages = extract_data_from_excel(file_path)
-                
-                if car_name:
-                    # Append data to DataFrame
-                    for percentage in percentages:
-                        combined_data = combined_data.append({"Car Names": car_name, "%-age": percentage}, ignore_index=True)
-    
-    # Save to Excel file
-    combined_data.to_excel(output_file, index=False)
-    print(f"Data saved to {output_file}")
+        if "VRU Headform" in workbook.sheetnames:
+            vru_headform_sheet = workbook["VRU Headform"]
+            data = extract_vru_headform_data(vru_headform_sheet)
+        else:
+            return first_word, None
+
+        return first_word, data
+    except Exception as e:
+        logging.error(f"Error processing {file_path}: {e}")
+        return None, None
+
+def print_table(df):
+    logging.info("\n" + df.to_string(index=False))
 
 def main():
-    start_time = datetime.now()
-    print(f"Execution started at: {start_time}")
-    
-    # Process each folder in the root directory
+    root_directory = "Euro NCAP"
+    output_directory = "Extracted Data/VRU Headform (C) - Color-wise data"
+
+    if not os.path.exists(output_directory):
+        os.makedirs(output_directory)
+
+    start_time = time.time()
+
     for folder_name in os.listdir(root_directory):
         folder_path = os.path.join(root_directory, folder_name)
+        
         if os.path.isdir(folder_path):
-            process_folder(folder_path)
-    
-    end_time = datetime.now()
-    print(f"Execution ended at: {end_time}")
-    print(f"Total execution time: {end_time - start_time}")
+            first_word_of_folder = folder_name.split()[0]
+            output_file = os.path.join(output_directory, f"{first_word_of_folder}_cars_combined.xlsx")
+            
+            # Initialize a DataFrame to collect all data
+            combined_df = pd.DataFrame()
+
+            for subdir, dirs, files in os.walk(folder_path):
+                for file in files:
+                    if file.endswith('.xlsx') or file.endswith('.xls'):
+                        file_path = os.path.join(subdir, file)
+                        first_word, data = extract_data_from_excel(file_path)
+                        if first_word and data:
+                            df = pd.DataFrame(data)
+                            if not df.empty:
+                                df.columns = df.iloc[0]
+                                df = df[1:]
+                                df = df.dropna(how='all').dropna(axis=1, how='all')
+                                
+                                # Append the first word and the last column of the extracted table as a new row
+                                new_row = [first_word] + df.iloc[:, -1].tolist()
+                                combined_df = pd.concat([combined_df, pd.DataFrame([new_row])], ignore_index=True)
+
+            # Save the combined data to the "Data" sheet
+            if not combined_df.empty:
+                combined_df.columns = ["First Word"] + [f"Column {i+1}" for i in range(combined_df.shape[1] - 1)]
+                with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
+                    combined_df.to_excel(writer, sheet_name="Data", index=False)
+
+            logging.info(f"Data extraction complete for {folder_name}. Results saved in {output_file}.")
+
+    end_time = time.time()
+    execution_time = end_time - start_time
+    logging.info(f"\nScript executed in {execution_time:.2f} seconds.")
 
 if __name__ == "__main__":
     main()
