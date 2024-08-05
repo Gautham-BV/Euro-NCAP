@@ -63,25 +63,6 @@ def extract_data_from_excel(file_path):
         logging.error(f"Error processing {file_path}: {e}")
         return None, None
 
-def adjust_column_widths(file_path):
-    # Adjust column widths to fit the contents
-    wb = openpyxl.load_workbook(file_path)
-    ws = wb.active
-    
-    for col in ws.columns:
-        max_length = 0
-        column = col[0].column_letter  # Get the column name
-        for cell in col:
-            try:
-                if len(str(cell.value)) > max_length:
-                    max_length = len(cell.value)
-            except:
-                pass
-        adjusted_width = (max_length + 2) * 1.2
-        ws.column_dimensions[column].width = adjusted_width
-
-    wb.save(file_path)
-
 def main():
     # Define the root and output directories
     root_directory = "Euro NCAP"
@@ -130,9 +111,11 @@ def main():
                                     column_names.extend(df.iloc[:, 1].tolist())
                                 column_names[-1]="Predicted headform score (excluding blue points)"
                                 
+                                # Multiply by 100 and round to 2 decimal places
+                                df.iloc[:, -1] = df.iloc[:, -1].apply(lambda x: round(x * 100, 2) if pd.notna(x) else x)
+                                
                                 # Append the first word and the last column of the extracted table as a new row
-                                # Multiply the last column values by 100 before adding to new_row
-                                new_row = [first_word] + [value * 100 for value in df.iloc[:, -1].tolist()]
+                                new_row = [first_word] + df.iloc[:, -1].tolist()
                                 combined_df = pd.concat([combined_df, pd.DataFrame([new_row])], ignore_index=True)
 
             # Print the combined DataFrame before saving to Excel
@@ -147,15 +130,24 @@ def main():
                 print(combined_df)
                 print(f"Column names: {combined_df.columns.tolist()}")
 
-                # Round numerical values to 2 decimal places
-                combined_df = combined_df.round(2)
-
                 # Save the combined data to the "Data" sheet
                 with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
                     combined_df.to_excel(writer, sheet_name="Data", index=False)
-                
-                # Adjust column widths
-                adjust_column_widths(output_file)
+
+                    # Adjust column widths
+                    workbook = writer.book
+                    worksheet = writer.sheets["Data"]
+                    for col in worksheet.columns:
+                        max_length = 0
+                        column = col[0].column_letter  # Get the column name
+                        for cell in col:
+                            try:
+                                if len(str(cell.value)) > max_length:
+                                    max_length = len(cell.value)
+                            except:
+                                pass
+                        adjusted_width = (max_length + 2)
+                        worksheet.column_dimensions[column].width = adjusted_width
 
             logging.info(f"Data extraction complete for {folder_name}. Results saved in {output_file}.")
 

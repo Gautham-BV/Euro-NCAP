@@ -38,7 +38,7 @@ for file_name in os.listdir(input_folder):
         
         # Constants to control the layout
         max_cols = 2  # Number of columns
-        row_increment = 30  # Number of rows between graphs
+        row_increment = 26  # Number of rows between graphs
         col_increment = 10  # Number of columns between graphs
         
         # Generate scatter plots

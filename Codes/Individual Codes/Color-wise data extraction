@@ -1,4 +1,5 @@
 import os
+import time
 from openpyxl import load_workbook, Workbook
 
 input_folder = 'Extracted Data/VRU Headform - Prediction tables'
@@ -6,6 +7,9 @@ output_folder = 'Extracted Data/VRU Headform - Color-wise data'
 
 # Ensure output folder exists
 os.makedirs(output_folder, exist_ok=True)
+
+# Start timing
+start_time = time.time()
 
 # Iterate through each Excel file in the input folder
 for filename in os.listdir(input_folder):
@@ -55,3 +59,9 @@ for filename in os.listdir(input_folder):
         # Save the output workbook
         output_wb.save(output_filename)
         print(f'Processed and saved: {output_filename}')
+
+# End timing
+end_time = time.time()
+elapsed_time = end_time - start_time
+
+print(f'Time taken to execute the code: {elapsed_time:.2f} seconds')
