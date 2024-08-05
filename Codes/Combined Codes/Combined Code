@@ -40,32 +40,37 @@ if not os.path.exists(output_directory):
 
 start_time = time.time()
 
-for subdir, dirs, files in os.walk(root_directory):
-    for folder in dirs:
-        folder_path = os.path.join(subdir, folder)
+for folder in os.listdir(root_directory):
+    folder_path = os.path.join(root_directory, folder)
+    
+    if os.path.isdir(folder_path):
         output_file_name = f"{folder.split()[0]}_combined_data.xlsx"
         output_file_path = os.path.join(output_directory, output_file_name)
         
         car_names = ["Car Names"]
         combined_data = []
         
-        for subdir2, dirs2, files2 in os.walk(folder_path):
-            for file in files2:
-                if file.endswith(".xlsx"):
-                    file_path = os.path.join(subdir2, file)
-                    try:
-                        overall_rating_sheet = pd.read_excel(file_path, sheet_name='OVERALL RATING')
-                        vru_headform_sheet = pd.read_excel(file_path, sheet_name='VRU Headform')
-                        
-                        car_name = extract_car_name(overall_rating_sheet)
-                        vru_headform_data = extract_vru_headform_data(vru_headform_sheet)
-                        
-                        if car_name:
-                            car_names.append(car_name)
-                            combined_data.append(vru_headform_data)
+        for file in os.listdir(folder_path):
+            if file.endswith(".xlsx"):
+                file_path = os.path.join(folder_path, file)
+                try:
+                    overall_rating_sheet = pd.read_excel(file_path, sheet_name='OVERALL RATING')
+                    vru_headform_sheet = pd.read_excel(file_path, sheet_name='VRU Headform')
                     
-                    except Exception as e:
-                        print(f"Failed to process file {file_path}: {e}")
+                    car_name = extract_car_name(overall_rating_sheet)
+                    vru_headform_data = extract_vru_headform_data(vru_headform_sheet)
+                    
+                    if car_name:
+                        car_names.append(car_name)
+                        combined_data.append(vru_headform_data)
+                        
+                        print(f"Extracted car name: {car_name}")
+                        print("Extracted VRU Headform data:")
+                        for row in vru_headform_data:
+                            print(row)
+                
+                except Exception as e:
+                    print(f"Failed to process file {file_path}: {e}")
         
         # Create the output DataFrame
         output_df = pd.DataFrame(combined_data)
