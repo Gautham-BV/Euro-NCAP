@@ -3,33 +3,17 @@ import pandas as pd
 import openpyxl
 import time
 import logging
-import re  # Import regex module
 
 # Set up logging configuration
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def extract_first_word_from_filename(file_name):
-    # Extract the file name without extension
-    name_without_extension = os.path.splitext(file_name)[0]
-    
-    # Pattern to match a continuous 4-digit number
-    year_pattern = re.compile(r'\b\d{4}\b')
-    match = year_pattern.search(name_without_extension)
-    if match:
-        first_word = name_without_extension[:match.end()]
-    else:
-        # Pattern to match "SUMMARY" if available
-        summary_index = name_without_extension.find('SUMMARY')
-        if summary_index != -1:
-            first_word = name_without_extension[:summary_index]
-        else:
-            # Use the full name if "SUMMARY" is not found
-            first_word = name_without_extension
-
-    # Replace underscores and hyphens with spaces
-    first_word = first_word.replace('_', ' ').replace('-', ' ')
-    
-    return first_word
+def extract_first_word(sheet):
+    # Extract the first word from the "OVERALL RATING" sheet
+    for row in sheet.iter_rows():
+        for cell in row:
+            if cell.value:
+                return str(cell.value)
+    return None
 
 def extract_vru_headform_data(sheet):
     # Extract the data from the "VRU Headform" sheet between "PREDICTION" and "%-age"
@@ -60,9 +44,12 @@ def extract_data_from_excel(file_path):
         # Load the workbook and sheets
         workbook = openpyxl.load_workbook(file_path, data_only=True)
         
-        # Extract the first word from the file name
-        file_name = os.path.basename(file_path)
-        first_word = extract_first_word_from_filename(file_name)
+        # Extract the first word from the "OVERALL RATING" sheet
+        if "OVERALL RATING" in workbook.sheetnames:
+            overall_rating_sheet = workbook["OVERALL RATING"]
+            first_word = extract_first_word(overall_rating_sheet)
+        else:
+            return None, None
 
         # Extract the data from the "VRU Headform" sheet
         if "VRU Headform" in workbook.sheetnames:
@@ -131,7 +118,7 @@ def main():
                                 new_row = [first_word] + df.iloc[:, -1].tolist()
                                 combined_df = pd.concat([combined_df, pd.DataFrame([new_row])], ignore_index=True)
 
-            # Remove duplicate rows from the combined DataFrame
+            # Remove duplicate rows
             combined_df = combined_df.drop_duplicates()
 
             # Print the combined DataFrame before saving to Excel

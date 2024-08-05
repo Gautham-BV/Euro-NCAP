@@ -2,7 +2,6 @@ import os
 import pandas as pd
 import openpyxl
 import time
-import re
 
 def extract_data_from_excel(file_path):
     header = None
@@ -11,26 +10,20 @@ def extract_data_from_excel(file_path):
         # Load the workbook and sheets
         workbook = openpyxl.load_workbook(file_path, data_only=True)
         
-        # Extract the desired name based on conditions
-        file_name = os.path.basename(file_path)
-        name_part = None
-        
-        # Try to extract the name till the year (4 continuous digits)
-        match = re.search(r'\D*(\d{4})', file_name)
-        if match:
-            name_part = file_name[:match.start()].strip()
+        # Extract the first word from the "OVERALL RATING" sheet
+        if "OVERALL RATING" in workbook.sheetnames:
+            overall_rating_sheet = workbook["OVERALL RATING"]
+            first_word = None
+            for row in overall_rating_sheet.iter_rows():
+                for cell in row:
+                    if cell.value:
+                        first_word = str(cell.value)
+                        break
+                if first_word:
+                    break
         else:
-            # Try to extract the part before 'SUMMARY'
-            summary_index = file_name.find('SUMMARY')
-            if summary_index != -1:
-                name_part = file_name[:summary_index].strip()
-            else:
-                # Use the full file name if neither condition is met
-                name_part = file_name
+            return None, None
 
-        # Clean up the name part
-        name_part = name_part.replace('_', ' ').replace('-', ' ').strip()
-        
         # Extract the data from the "VRU Headform" sheet between "PREDICTION" and "%-age"
         if "VRU Headform" in workbook.sheetnames:
             vru_headform_sheet = workbook["VRU Headform"]
@@ -60,11 +53,17 @@ def extract_data_from_excel(file_path):
         print(f"Error processing {file_path}: {e}")
         return None, None
 
-    return name_part, data
+    return first_word, data
 
 def print_table(df):
     # Format and print the DataFrame
     print(df.to_string(index=False))
+
+def auto_adjust_column_widths(writer, df, sheet_name):
+    worksheet = writer.sheets[sheet_name]
+    for i, col in enumerate(df.columns, 1):
+        max_length = max(df[col].astype(str).map(len).max(), len(str(col))) + 2
+        worksheet.column_dimensions[openpyxl.utils.get_column_letter(i)].width = max_length
 
 # Define the root directory containing all the subdirectories and files
 root_directory = "Euro NCAP"
@@ -100,8 +99,8 @@ for folder_name in os.listdir(root_directory):
                     if file.endswith('.xlsx') or file.endswith('.xls'):
                         # Create the full file path
                         file_path = os.path.join(subdir, file)
-                        name_part, data = extract_data_from_excel(file_path)
-                        if name_part and data:
+                        first_word, data = extract_data_from_excel(file_path)
+                        if first_word and data:
                             # Create a DataFrame from the data and take the first row as header
                             df = pd.DataFrame(data)
                             if not df.empty:
@@ -112,13 +111,16 @@ for folder_name in os.listdir(root_directory):
                                 df = df.dropna(how='all').dropna(axis=1, how='all')
                                 
                                 # Print the formatted DataFrame
-                                print(f"\nExtracted Name: {name_part}")
+                                print(f"\nExtracted Word: {first_word}")
                                 print("Extracted Table:")
                                 print_table(df)
                                 
-                                # Write to the new Excel sheet with the extracted name as the sheet name
-                                sheet_name = name_part if len(name_part) <= 31 else name_part[:31]  # Sheet names are limited to 31 characters
+                                # Write to the new Excel sheet with the extracted word as the sheet name
+                                sheet_name = first_word if len(first_word) <= 31 else first_word[:31]  # Sheet names are limited to 31 characters
                                 df.to_excel(writer, sheet_name=sheet_name, index=False)
+                                
+                                # Auto adjust column widths
+                                auto_adjust_column_widths(writer, df, sheet_name)
 
         print(f"Data extraction complete for {folder_name}. Results saved in {output_file}.")
 
