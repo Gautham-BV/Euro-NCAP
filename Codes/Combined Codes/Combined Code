@@ -131,6 +131,9 @@ def main():
                                 new_row = [first_word] + df.iloc[:, -1].tolist()
                                 combined_df = pd.concat([combined_df, pd.DataFrame([new_row])], ignore_index=True)
 
+            # Remove duplicate rows from the combined DataFrame
+            combined_df = combined_df.drop_duplicates()
+
             # Print the combined DataFrame before saving to Excel
             if not combined_df.empty:
                 if len(column_names) < combined_df.shape[1]:
