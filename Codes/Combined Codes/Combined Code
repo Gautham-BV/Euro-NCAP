@@ -7,14 +7,6 @@ import logging
 # Set up logging configuration
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def extract_first_word(sheet):
-    # Extract the first word from the "OVERALL RATING" sheet
-    for row in sheet.iter_rows():
-        for cell in row:
-            if cell.value:
-                return str(cell.value).split()[0]
-    return None
-
 def extract_vru_headform_data(sheet):
     # Extract the data from the "VRU Headform" sheet between "PREDICTION" and "%-age"
     prediction_cell = None
@@ -41,15 +33,12 @@ def extract_vru_headform_data(sheet):
 
 def extract_data_from_excel(file_path):
     try:
+        # Extract the part of the file name before '_SUMMARYSpreadsheet'
+        file_name = os.path.basename(file_path)
+        first_word = file_name.split('SUMMARY')[0]
+
         # Load the workbook and sheets
         workbook = openpyxl.load_workbook(file_path, data_only=True)
-        
-        # Extract the first word from the "OVERALL RATING" sheet
-        if "OVERALL RATING" in workbook.sheetnames:
-            overall_rating_sheet = workbook["OVERALL RATING"]
-            first_word = extract_first_word(overall_rating_sheet)
-        else:
-            return None, None
 
         # Extract the data from the "VRU Headform" sheet
         if "VRU Headform" in workbook.sheetnames:
@@ -109,7 +98,7 @@ def main():
                                 # Capture the values from the second column of the extracted table
                                 if len(column_names) == 1 and len(df.columns) > 1:
                                     column_names.extend(df.iloc[:, 1].tolist())
-                                column_names[-1]="Predicted headform score (excluding blue points)"
+                                column_names[-1] = "Predicted headform score (excluding blue points)"
                                 
                                 # Multiply by 100 and round to 2 decimal places
                                 df.iloc[:, -1] = df.iloc[:, -1].apply(lambda x: round(x * 100, 2) if pd.notna(x) else x)

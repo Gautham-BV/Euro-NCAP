@@ -56,6 +56,19 @@ for filename in os.listdir(input_folder):
                 row_data.append(car_values[car_name][i] if i < len(car_values[car_name]) else None)
             output_sheet.append(row_data)
 
+        # Adjust column widths
+        for col in output_sheet.columns:
+            max_length = 0
+            column = col[0].column_letter  # Get the column name
+            for cell in col:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))
+                except:
+                    pass
+            adjusted_width = (max_length + 2)
+            output_sheet.column_dimensions[column].width = adjusted_width
+
         # Save the output workbook
         output_wb.save(output_filename)
         print(f'Processed and saved: {output_filename}')
