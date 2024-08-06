@@ -57,6 +57,10 @@ for file_name in os.listdir(input_folder):
             ax.yaxis.set_tick_params(labelsize=8)  # Reduce y-axis label font size
             ax.legend(fontsize=8)  # Adjust legend font size
             
+            # Add data labels with 2 decimal places
+            for j, txt in enumerate(df[col]):
+                ax.annotate(f'{txt:.2f}', (df[df.columns[0]][j], df[col][j]), fontsize=6, ha='right')
+            
             # Adjust layout to make sure labels are fully visible
             plt.tight_layout()
             
