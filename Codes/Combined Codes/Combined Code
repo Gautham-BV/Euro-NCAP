@@ -104,7 +104,7 @@ def main():
 
                                 # Print the extracted table (df) every time
                                 print(f"\n\nExtracted Car Name from the file {file}:", first_word)
-                                print(f"\n\nExtracted Table from file {file}:")
+                                print(f"\nExtracted Table from file {file}:")
                                 print("\n")
                                 print(df)
                                 print("\n")

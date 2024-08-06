@@ -144,9 +144,9 @@ def process_files(root_directory, output_directory):
                                 df.columns = df.iloc[0]
                                 df = df[1:]
                                 df = df.dropna(how='all').dropna(axis=1, how='all')
+                                
                                 print("\n")
                                 print(f"\nExtracted Car Name from the file {file}:", first_word)
-                                print("\n")
                                 print(f"\nExtracted Table from file {file}:")
                                 print("\n")
                                 print(df)
