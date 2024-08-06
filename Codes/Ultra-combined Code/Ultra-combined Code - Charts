@@ -70,7 +70,7 @@ def main():
     """Main function to extract data, generate graphs, and save results"""
     # Define the root and output directories
     root_directory = "Euro NCAP"
-    output_directory = "Extracted Data/VRU Headform (UC) - Color-wise Data & Graphs"
+    output_directory = "Extracted Data/VRU Headform (UC-C) - Color-wise Data & Graphs"
 
     # Ensure the output directory exists
     if not os.path.exists(output_directory):
