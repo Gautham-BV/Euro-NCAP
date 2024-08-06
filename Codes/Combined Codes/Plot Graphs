@@ -5,6 +5,7 @@ from openpyxl import load_workbook
 from openpyxl.drawing.image import Image
 from io import BytesIO
 import time
+import random
 
 # Set input folder path
 input_folder = 'Extracted Data/VRU Headform (C) - Color-wise data'
@@ -57,9 +58,11 @@ for file_name in os.listdir(input_folder):
             ax.yaxis.set_tick_params(labelsize=8)  # Reduce y-axis label font size
             ax.legend(fontsize=8)  # Adjust legend font size
             
-            # Add data labels with 2 decimal places
+            # Add data labels with 2 decimal places and offset to avoid overlapping
             for j, txt in enumerate(df[col]):
-                ax.annotate(f'{txt:.2f}', (df[df.columns[0]][j], df[col][j]), fontsize=6, ha='right')
+                ax.annotate(f'{txt:.2f}', (df[df.columns[0]][j], df[col][j]), 
+                            fontsize=6, ha='right', 
+                            xytext=(3,3), textcoords='offset points')  # Offset labels slightly
             
             # Adjust layout to make sure labels are fully visible
             plt.tight_layout()
