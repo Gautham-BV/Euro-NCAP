@@ -1,0 +1,239 @@
+import os
+import pandas as pd
+import openpyxl
+import time
+import logging
+from openpyxl import load_workbook
+from openpyxl.chart import ScatterChart, Reference, Series
+
+# Set up logging configuration
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+def extract_first_word(sheet):
+    """Extract the first word from the "OVERALL RATING" sheet"""
+    for row in sheet.iter_rows():
+        for cell in row:
+            if cell.value:
+                return str(cell.value)
+    return None
+
+def extract_vru_headform_data(sheet):
+    """Extract the data from the "VRU Headform" sheet between "PREDICTION" and "%-age"""
+    prediction_cell = None
+    percentage_cell = None
+    for row in sheet.iter_rows():
+        for cell in row:
+            if cell.value == "PREDICTION":
+                prediction_cell = cell
+            elif cell.value == "%-age":
+                percentage_cell = cell
+            if prediction_cell and percentage_cell:
+                break
+    
+    if prediction_cell and percentage_cell:
+        start_row = prediction_cell.row
+        start_col = prediction_cell.column
+        end_col = percentage_cell.column
+        data = [
+            [sheet.cell(row=i, column=j).value for j in range(start_col, end_col + 1)]
+            for i in range(start_row, start_row + 10)
+        ]
+        return data
+    return None
+
+def extract_data_from_excel(file_path):
+    """Extract data from Excel files"""
+    try:
+        # Load the workbook and sheets
+        workbook = openpyxl.load_workbook(file_path, data_only=True)
+        
+        # Extract the first word from the "OVERALL RATING" sheet
+        if "OVERALL RATING" in workbook.sheetnames:
+            overall_rating_sheet = workbook["OVERALL RATING"]
+            first_word = extract_first_word(overall_rating_sheet)
+        else:
+            return None, None
+
+        # Extract the data from the "VRU Headform" sheet
+        if "VRU Headform" in workbook.sheetnames:
+            vru_headform_sheet = workbook["VRU Headform"]
+            data = extract_vru_headform_data(vru_headform_sheet)
+        else:
+            return first_word, None
+
+        return first_word, data
+    except Exception as e:
+        logging.error(f"Error processing {file_path}: {e}")
+        return None, None
+
+def main():
+    """Main function to extract data, generate graphs, and save results"""
+    # Define the root and output directories
+    root_directory = "Euro NCAP"
+    output_directory = "Extracted Data/VRU Headform (UC) - Color-wise Data & Graphs"
+
+    # Ensure the output directory exists
+    if not os.path.exists(output_directory):
+        os.makedirs(output_directory)
+
+    # Start timing the overall execution
+    start_time = time.time()
+
+    # Data extraction timing
+    extraction_start_time = time.time()
+
+    # Iterate through each folder in the root directory
+    for folder_name in os.listdir(root_directory):
+        folder_path = os.path.join(root_directory, folder_name)
+        
+        # Ensure it's a directory
+        if os.path.isdir(folder_path):
+            first_word_of_folder = folder_name.split()[0]
+            output_file = os.path.join(output_directory, f"{first_word_of_folder}_cars_combined.xlsx")
+            
+            # Initialize a DataFrame to collect all data
+            combined_df = pd.DataFrame()
+
+            # Placeholder for column names
+            column_names = ["Car Names"]
+
+            # Walk through the directory tree within the folder
+            for subdir, dirs, files in os.walk(folder_path):
+                for file in files:
+                    if file.endswith('.xlsx') or file.endswith('.xls'):
+                        file_path = os.path.join(subdir, file)
+                        first_word, data = extract_data_from_excel(file_path)
+                        if first_word and data:
+                            df = pd.DataFrame(data)
+                            if not df.empty:
+                                df.columns = df.iloc[0]
+                                df = df[1:]
+                                df = df.dropna(how='all').dropna(axis=1, how='all')
+
+                                # Print the extracted table (df) every time
+                                print(f"\n\nExtracted Car Name from the file {file}:", first_word)
+                                print(f"\nExtracted Table from file {file}:")
+                                print("\n")
+                                print(df)
+                                print("\n")
+                                
+                                # Capture the values from the second column of the extracted table
+                                if len(column_names) == 1 and len(df.columns) > 1:
+                                    column_names.extend(df.iloc[:, 1].tolist())
+                                column_names[-1] = "Predicted headform score (excluding blue points)"
+                                
+                                # Multiply by 100 and round to 2 decimal places
+                                df.iloc[:, -1] = df.iloc[:, -1].apply(lambda x: (x * 100) if pd.notna(x) else x)
+                                
+                                # Append the first word and the last column of the extracted table as a new row
+                                new_row = [first_word] + df.iloc[:, -1].tolist()
+                                combined_df = pd.concat([combined_df, pd.DataFrame([new_row])], ignore_index=True)
+
+            # Remove duplicate rows
+            combined_df = combined_df.drop_duplicates()
+
+            # Print the combined DataFrame before saving to Excel
+            if not combined_df.empty:
+                if len(column_names) < combined_df.shape[1]:
+                    # Extend column names with default names if not enough provided
+                    column_names.extend([f"Column {i+1}" for i in range(len(column_names), combined_df.shape[1])])
+                combined_df.columns = column_names[:combined_df.shape[1]]  # Ensure exact match
+
+                # Print the combined DataFrame and column names
+                print("\n")
+                print(f"\nCombined DataFrame for {folder_name}:")
+                print("\n")
+                print(combined_df)
+                print("\n")
+                print(f"Column names: {combined_df.columns.tolist()}")
+                print("\n")
+
+                # Save the combined data to the "Data" sheet
+                with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
+                    combined_df.to_excel(writer, sheet_name="Data", index=False)
+
+                    # Adjust column widths
+                    workbook = writer.book
+                    worksheet = writer.sheets["Data"]
+                    for col in worksheet.columns:
+                        max_length = 0
+                        column = col[0].column_letter  # Get the column name
+                        for cell in col:
+                            try:
+                                if len(str(cell.value)) > max_length:
+                                    max_length = len(cell.value)
+                            except:
+                                pass
+                        adjusted_width = (max_length + 2)
+                        worksheet.column_dimensions[column].width = adjusted_width
+
+            logging.info(f"\nData extraction complete for {folder_name}. Results saved in {output_file}.")
+
+    # Data extraction timing
+    extraction_end_time = time.time()
+    extraction_execution_time = extraction_end_time - extraction_start_time
+    logging.info(f"Data extraction completed in {extraction_execution_time:.2f} seconds.")
+
+    # Graph generation timing
+    graph_start_time = time.time()
+
+    # Loop through each Excel file in the output folder
+    for file_name in os.listdir(output_directory):
+        if file_name.endswith('.xlsx'):
+            file_path = os.path.join(output_directory, file_name)
+            
+            # Read Excel file
+            df = pd.read_excel(file_path)
+            
+            # Load the existing Workbook
+            wb = load_workbook(file_path)
+            
+            # Remove the sheet named 'Graphs' if it already exists
+            if 'Graphs' in wb.sheetnames:
+                del wb['Graphs']
+            
+            # Create a sheet named 'Graphs'
+            ws = wb.create_sheet(title='Graphs')
+            
+            # Generate scatter plots
+            for i, col in enumerate(df.columns[1:]):
+                chart = ScatterChart()
+                chart.title = f'{col}'
+                chart.style = 13
+                chart.x_axis.title = df.columns[0]
+                chart.y_axis.title = '%-age'
+
+                # Add data to chart
+                x_values = Reference(ws, min_col=1, min_row=2, max_row=len(df) + 1)
+                y_values = Reference(ws, min_col=i + 2, min_row=2, max_row=len(df) + 1)
+                series = Series(y_values, x_values, title=col)
+                chart.series.append(series)
+                
+                # Calculate the average value for the y-axis
+                avg_value = df[col].mean()
+                
+                # Add the average line to the chart
+                avg_series = Series(Reference(ws, min_col=i + 2, min_row=2, max_row=len(df) + 1),
+                                    x_values, title=f'Average: {avg_value:.2f}')
+                avg_series.graphicalProperties.line.solidFill = "FFA500"  # Orange color
+                avg_series.graphicalProperties.line.width = 30000  # Width of the line
+                chart.series.append(avg_series)
+
+                # Add chart to the sheet
+                chart_cell = f'A{i * 15 + 1}'
+                ws.add_chart(chart, chart_cell)
+
+            # Save the updated Excel file with charts
+            wb.save(file_path)
+
+    # Graph generation timing
+    graph_end_time = time.time()
+    graph_execution_time = graph_end_time - graph_start_time
+    logging.info(f"\nGraphs generated in {graph_execution_time:.2f} seconds.")
+
+    # Total execution time
+    total_execution_time = time.time() - start_time
+    logging.info(f"\nTotal script execution time: {total_execution_time:.2f} seconds.\n")
+
+if __name__ == "__main__":
+    main()
