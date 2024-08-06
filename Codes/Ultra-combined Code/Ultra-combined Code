@@ -3,12 +3,15 @@ import pandas as pd
 import openpyxl
 import time
 import logging
+import matplotlib.pyplot as plt
+from openpyxl import load_workbook
+from openpyxl.drawing.image import Image
+from io import BytesIO
 
 # Set up logging configuration
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def extract_first_word(sheet):
-    # Extract the first word from the "OVERALL RATING" sheet
     for row in sheet.iter_rows():
         for cell in row:
             if cell.value:
@@ -16,7 +19,6 @@ def extract_first_word(sheet):
     return None
 
 def extract_vru_headform_data(sheet):
-    # Extract the data from the "VRU Headform" sheet between "PREDICTION" and "%-age"
     prediction_cell = None
     percentage_cell = None
     for row in sheet.iter_rows():
@@ -41,17 +43,13 @@ def extract_vru_headform_data(sheet):
 
 def extract_data_from_excel(file_path):
     try:
-        # Load the workbook and sheets
         workbook = openpyxl.load_workbook(file_path, data_only=True)
-        
-        # Extract the first word from the "OVERALL RATING" sheet
         if "OVERALL RATING" in workbook.sheetnames:
             overall_rating_sheet = workbook["OVERALL RATING"]
             first_word = extract_first_word(overall_rating_sheet)
         else:
             return None, None
 
-        # Extract the data from the "VRU Headform" sheet
         if "VRU Headform" in workbook.sheetnames:
             vru_headform_sheet = workbook["VRU Headform"]
             data = extract_vru_headform_data(vru_headform_sheet)
@@ -63,33 +61,78 @@ def extract_data_from_excel(file_path):
         logging.error(f"Error processing {file_path}: {e}")
         return None, None
 
-def main():
-    # Define the root and output directories
-    root_directory = "Euro NCAP"
-    output_directory = "Extracted Data/VRU Headform (C) - Color-wise data"
+def generate_graphs(file_path):
+    df = pd.read_excel(file_path, sheet_name="Data")
+    wb = load_workbook(file_path)
+    
+    if 'Graphs' in wb.sheetnames:
+        del wb['Graphs']
+    
+    ws = wb.create_sheet(title='Graphs')
+    
+    row_position = 1
+    col_position = 1
+    max_cols = 2
+    row_increment = 26
+    col_increment = 10
+    
+    for i, col in enumerate(df.columns[1:]):
+        fig, ax = plt.subplots()
+        scatter = ax.scatter(df[df.columns[0]], df[col], label=col, s=8, c='red')
+        
+        avg_value = df[col].mean()
+        ax.axhline(y=avg_value, color='orange', linestyle='-', label=f'Average: {avg_value:.2f}')
+        
+        ax.set_xlabel(df.columns[0], fontsize=10)
+        ax.set_ylabel('%-age', fontsize=10)
+        ax.set_title(f'{col}', fontsize=12)
+        ax.xaxis.set_tick_params(rotation=90, labelsize=6)
+        ax.yaxis.set_tick_params(labelsize=8)
+        ax.legend(fontsize=8)
+        
+        for j, txt in enumerate(df[col]):
+            ax.annotate(f'{txt:.2f}', (df[df.columns[0]][j], df[col][j]), 
+                        fontsize=6, ha='right', 
+                        xytext=(3,3), textcoords='offset points')
+        
+        plt.tight_layout()
+        
+        img_stream = BytesIO()
+        plt.savefig(img_stream, format='png', bbox_inches='tight')
+        plt.close(fig)
+        
+        img_stream.seek(0)
+        img = Image(img_stream)
+        img.anchor = ws.cell(row=row_position, column=col_position).coordinate
+        ws.add_image(img)
+        
+        if (i + 1) % max_cols == 0:
+            row_position += row_increment
+            col_position = 1
+        else:
+            col_position += col_increment
 
+    wb.save(file_path)
+
+def process_files(root_directory, output_directory):
     # Ensure the output directory exists
     if not os.path.exists(output_directory):
         os.makedirs(output_directory)
+    
+    total_start_time = time.time()
 
-    start_time = time.time()
-
-    # Iterate through each folder in the root directory
     for folder_name in os.listdir(root_directory):
         folder_path = os.path.join(root_directory, folder_name)
-        
-        # Ensure it's a directory
+
         if os.path.isdir(folder_path):
             first_word_of_folder = folder_name.split()[0]
             output_file = os.path.join(output_directory, f"{first_word_of_folder}_cars_combined.xlsx")
             
-            # Initialize a DataFrame to collect all data
             combined_df = pd.DataFrame()
-
-            # Placeholder for column names
             column_names = ["Car Names"]
 
-            # Walk through the directory tree within the folder
+            data_extraction_start_time = time.time()
+
             for subdir, dirs, files in os.walk(folder_path):
                 for file in files:
                     if file.endswith('.xlsx') or file.endswith('.xls'):
@@ -101,54 +144,50 @@ def main():
                                 df.columns = df.iloc[0]
                                 df = df[1:]
                                 df = df.dropna(how='all').dropna(axis=1, how='all')
-
-                                # Print the extracted table (df) every time
-                                print(f"\n\nExtracted Car Name from the file {file}:", first_word)
-                                print(f"\n\nExtracted Table from file {file}:")
+                                print("\n")
+                                print(f"\nExtracted Car Name from the file {file}:", first_word)
+                                print("\n")
+                                print(f"\nExtracted Table from file {file}:")
                                 print("\n")
                                 print(df)
                                 print("\n")
-
-                                # Capture the values from the second column of the extracted table
+                                
                                 if len(column_names) == 1 and len(df.columns) > 1:
                                     column_names.extend(df.iloc[:, 1].tolist())
                                 column_names[-1]="Predicted headform score (excluding blue points)"
                                 
-                                # Multiply by 100 and round to 2 decimal places
                                 df.iloc[:, -1] = df.iloc[:, -1].apply(lambda x: (x *100) if pd.notna(x) else x)
                                 
-                                # Append the first word and the last column of the extracted table as a new row
                                 new_row = [first_word] + df.iloc[:, -1].tolist()
                                 combined_df = pd.concat([combined_df, pd.DataFrame([new_row])], ignore_index=True)
 
-            # Remove duplicate rows
             combined_df = combined_df.drop_duplicates()
 
-            # Print the combined DataFrame before saving to Excel
+            data_extraction_end_time = time.time()
+            data_extraction_execution_time = data_extraction_end_time - data_extraction_start_time
+            logging.info(f"\nData extraction executed in {data_extraction_execution_time:.2f} seconds.")
+
             if not combined_df.empty:
                 if len(column_names) < combined_df.shape[1]:
-                    # Extend column names with default names if not enough provided
                     column_names.extend([f"Column {i+1}" for i in range(len(column_names), combined_df.shape[1])])
-                combined_df.columns = column_names[:combined_df.shape[1]]  # Ensure exact match
+                combined_df.columns = column_names[:combined_df.shape[1]]
 
-                # Print the combined DataFrame and column names
-                print(f"\n\nCombined DataFrame for {folder_name}:")
+                print("\n")
+                print(f"\nCombined DataFrame for {folder_name}:")
                 print("\n")
                 print(combined_df)
                 print("\n")
                 print(f"Column names: {combined_df.columns.tolist()}")
                 print("\n")
 
-                # Save the combined data to the "Data" sheet
                 with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
                     combined_df.to_excel(writer, sheet_name="Data", index=False)
 
-                    # Adjust column widths
                     workbook = writer.book
                     worksheet = writer.sheets["Data"]
                     for col in worksheet.columns:
                         max_length = 0
-                        column = col[0].column_letter  # Get the column name
+                        column = col[0].column_letter
                         for cell in col:
                             try:
                                 if len(str(cell.value)) > max_length:
@@ -158,11 +197,17 @@ def main():
                         adjusted_width = (max_length + 2)
                         worksheet.column_dimensions[column].width = adjusted_width
 
-            logging.info(f"Data extraction complete for {folder_name}. Results saved in {output_file}.")
+            graph_generation_start_time = time.time()
+            generate_graphs(output_file)
+            graph_generation_end_time = time.time()
+            graph_generation_execution_time = graph_generation_end_time - graph_generation_start_time
+            logging.info(f"\nGraph generation for {folder_name} executed in {graph_generation_execution_time:.2f} seconds.")
 
-    end_time = time.time()
-    execution_time = end_time - start_time
-    logging.info(f"\nScript executed in {execution_time:.2f} seconds.")
+    total_end_time = time.time()
+    total_execution_time = total_end_time - total_start_time
+    logging.info(f"\nTotal script execution time: {total_execution_time:.2f} seconds.")
 
 if __name__ == "__main__":
-    main()
+    root_directory = "Euro NCAP"
+    output_directory = "Extracted Data/VRU Headform (UC) - Color-wise Data & Graphs"
+    process_files(root_directory, output_directory)
