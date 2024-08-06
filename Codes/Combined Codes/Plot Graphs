@@ -13,6 +13,17 @@ input_folder = 'Extracted Data/VRU Headform (C) - Color-wise data'
 # Start timing the execution
 start_time = time.time()
 
+# Function to add labels with minimal overlap
+def add_labels(ax, x_data, y_data):
+    for i in range(len(x_data)):
+        ax.annotate(
+            f'{y_data[i]:.2f}', 
+            (x_data[i], y_data[i]),
+            textcoords="offset points", 
+            xytext=(random.randint(-10, 10), random.randint(-10, 10)), 
+            ha='center', fontsize=6
+        )
+
 # Loop through each Excel file in the input folder
 for file_name in os.listdir(input_folder):
     if file_name.endswith('.xlsx'):
@@ -59,10 +70,7 @@ for file_name in os.listdir(input_folder):
             ax.legend(fontsize=8)  # Adjust legend font size
             
             # Add data labels with 2 decimal places and offset to avoid overlapping
-            for j, txt in enumerate(df[col]):
-                ax.annotate(f'{txt:.2f}', (df[df.columns[0]][j], df[col][j]), 
-                            fontsize=6, ha='right', 
-                            xytext=(3,3), textcoords='offset points')  # Offset labels slightly
+            add_labels(ax, df[df.columns[0]], df[col])
             
             # Adjust layout to make sure labels are fully visible
             plt.tight_layout()
