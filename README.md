@@ -1,2 +1,2 @@
-# Euro-NCAP
+# Euro NCAP
 Mahindra &amp; Mahindra
