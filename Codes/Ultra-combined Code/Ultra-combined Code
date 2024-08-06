@@ -126,7 +126,7 @@ def main():
                                 column_names[-1]="Predicted headform score (excluding blue points)"
                                 
                                 # Multiply by 100 and round to 2 decimal places
-                                df.iloc[:, -1] = df.iloc[:, -1].apply(lambda x: round(x * 100, 2) if pd.notna(x) else x)
+                                df.iloc[:, -1] = df.iloc[:, -1].apply(lambda x: (x * 100) if pd.notna(x) else x)
                                 
                                 # Append the first word and the last column of the extracted table as a new row
                                 new_row = [first_word] + df.iloc[:, -1].tolist()
