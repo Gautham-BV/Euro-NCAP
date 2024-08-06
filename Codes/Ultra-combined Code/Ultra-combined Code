@@ -170,12 +170,13 @@ def main():
                         adjusted_width = (max_length + 2)
                         worksheet.column_dimensions[column].width = adjusted_width
 
-            logging.info(f"\nData extraction complete for {folder_name}. Results saved in {output_file}.")
+            logging.info(f"\n\nData extraction complete for {folder_name}. \n\nResults saved in {output_file}.")
 
     # Data extraction timing
     extraction_end_time = time.time()
     extraction_execution_time = extraction_end_time - extraction_start_time
-    logging.info(f"Data extraction completed in {extraction_execution_time:.2f} seconds.")
+    print("\n")
+    logging.info(f"\nData extraction completed in {extraction_execution_time:.2f} seconds.")
 
     # Graph generation timing
     graph_start_time = time.time()
@@ -260,10 +261,12 @@ def main():
     # Graph generation timing
     graph_end_time = time.time()
     graph_execution_time = graph_end_time - graph_start_time
+    print("\n")
     logging.info(f"\nGraphs generated in {graph_execution_time:.2f} seconds.")
 
     # Total execution time
     total_execution_time = time.time() - start_time
+    print("\n")
     logging.info(f"\nTotal script execution time: {total_execution_time:.2f} seconds.\n")
 
 if __name__ == "__main__":
