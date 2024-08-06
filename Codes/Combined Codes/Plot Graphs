@@ -1,18 +1,13 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
-from openpyxl import Workbook
+from openpyxl import load_workbook
 from openpyxl.drawing.image import Image
 from io import BytesIO
-import numpy as np
 import time
 
-# Set input and output folder paths
+# Set input folder path
 input_folder = 'Extracted Data/VRU Headform (C) - Color-wise data'
-output_folder = 'Extracted Data/VRU Headform (C) - Color-wise graphs'
-
-# Create output folder if it doesn't exist
-os.makedirs(output_folder, exist_ok=True)
 
 # Start timing the execution
 start_time = time.time()
@@ -25,9 +20,12 @@ for file_name in os.listdir(input_folder):
         # Read Excel file
         df = pd.read_excel(file_path)
         
-        # Create a new Workbook
-        wb = Workbook()
-        wb.remove(wb.active)  # Remove the default sheet
+        # Load the existing Workbook
+        wb = load_workbook(file_path)
+        
+        # Remove the sheet named 'Graphs' if it already exists
+        if 'Graphs' in wb.sheetnames:
+            del wb['Graphs']
         
         # Create a sheet named 'Graphs'
         ws = wb.create_sheet(title='Graphs')
@@ -82,13 +80,12 @@ for file_name in os.listdir(input_folder):
             else:
                 col_position += col_increment  # Move to the next column
 
-        # Save Excel file with graphs
-        output_file_path = os.path.join(output_folder, file_name)
-        wb.save(output_file_path)
+        # Save the updated Excel file with graphs
+        wb.save(file_path)
 
 # End timing the execution
 end_time = time.time()
 execution_time = end_time - start_time
 
-print(f"Graphs have been added to the same sheet named 'Graphs' in the Excel files arranged in three columns without overlapping.")
+print(f"Graphs have been added to the same sheet named 'Graphs' in the input Excel files.")
 print(f"Execution time: {execution_time:.2f} seconds")
