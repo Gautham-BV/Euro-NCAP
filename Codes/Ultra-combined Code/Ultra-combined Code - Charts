@@ -6,6 +6,10 @@ import logging
 from openpyxl import load_workbook
 from openpyxl.chart import ScatterChart, Series, Reference
 
+# Suppress the warning messages
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl")
+
 # Set up logging configuration
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -66,21 +70,23 @@ def extract_data_from_excel(file_path):
         logging.error(f"Error processing {file_path}: {e}")
         return None, None
 
-def create_chart(sheet, data, chart_title, x_col, y_col):
+def create_chart(sheet, data, chart_title, x_col):
     """Create and insert a scatter chart into the given sheet"""
     chart = ScatterChart()
     chart.title = chart_title
     chart.style = 13
     chart.x_axis.title = x_col
-    chart.y_axis.title = y_col
+    chart.y_axis.title = chart_title
     
     x_data = Reference(sheet, min_col=1, min_row=2, max_row=len(data)+1)
-    for i in range(2, len(data[0])+1):
-        y_data = Reference(sheet, min_col=i, min_row=1, max_row=len(data)+1)
-        series = Series(y_data, xvalues=x_data, title=f"Series {i-1}")
-        chart.series.append(series)
+    y_data = Reference(sheet, min_col=data[0].index(chart_title)+1, min_row=1, max_row=len(data)+1)
     
-    sheet.add_chart(chart, "A15")
+    series = Series(y_data, xvalues=x_data, title=chart_title)
+    chart.series.append(series)
+    
+    # Position the chart
+    chart_location = f"A{15 + len(sheet._charts) * 20}"  # Adjust vertical position based on the number of charts
+    sheet.add_chart(chart, chart_location)
 
 def main():
     """Main function to extract data, generate charts, and save results"""
@@ -127,7 +133,7 @@ def main():
                                 df = df.dropna(how='all').dropna(axis=1, how='all')
 
                                 # Print the extracted table (df) every time
-                                print(f"\n\nExtracted Car Name from the file {file}:", first_word)
+                                print(f"\nExtracted Car Name from the file {file}:", first_word)
                                 print(f"\nExtracted Table from file {file}:")
                                 print("\n")
                                 print(df)
@@ -157,7 +163,7 @@ def main():
 
                 # Print the combined DataFrame and column names
                 print("\n")
-                print(f"\nCombined DataFrame for {folder_name}:")
+                print(f"Combined DataFrame for {folder_name}:")
                 print("\n")
                 print(combined_df)
                 print("\n")
@@ -213,8 +219,8 @@ def main():
             ws = wb.create_sheet(title='Charts')
             
             # Create and add scatter charts
-            for i, col in enumerate(df.columns[1:]):
-                create_chart(ws, df.to_numpy().tolist(), col, df.columns[0], col)
+            for col in df.columns[1:]:
+                create_chart(ws, df.to_numpy().tolist(), col, df.columns[0])
             
             # Save the updated Excel file with charts
             wb.save(file_path)
