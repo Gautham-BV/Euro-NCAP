@@ -17,11 +17,11 @@ warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl")
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def extract_first_word_and_number(sheet):
-    """Extract the first word and the first four-digit number from the file's name"""
+    """Extract the first word and the first four-digit number from the sheet"""
     for row in sheet.iter_rows():
         for cell in row:
             if cell.value:
-                first_word = str(cell.value)
+                first_word = str(cell.value).split()[0]
                 # Use regex to find the first four-digit number
                 four_digit_number = re.search(r'\b\d{4}\b', str(cell.value))
                 four_digit_number = four_digit_number.group() if four_digit_number else ""
@@ -62,7 +62,6 @@ def extract_data_from_excel(file_path):
         if "OVERALL RATING" in workbook.sheetnames:
             overall_rating_sheet = workbook["OVERALL RATING"]
             first_word, four_digit_number = extract_first_word_and_number(overall_rating_sheet)
-            first_word = first_word + " " + four_digit_number
         else:
             return None, None, None
 
@@ -117,6 +116,8 @@ def main():
                                 file_name_prefix = f"{first_word} {four_digit_number}"
                             else:
                                 file_name_prefix = first_word
+
+                            print(f"Extracted number from the file: {four_digit_number}")  # Print the number found
 
                             df = pd.DataFrame(data)
                             if not df.empty:
