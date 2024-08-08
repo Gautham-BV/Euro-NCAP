@@ -8,6 +8,9 @@ from openpyxl import load_workbook
 from openpyxl.drawing.image import Image
 from io import BytesIO
 
+# Suppress the warning messages
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl")
 
 # Set up logging configuration
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

@@ -133,7 +133,7 @@ def main():
                                 df = df.dropna(how='all').dropna(axis=1, how='all')
 
                                 # Print the extracted table (df) every time
-                                print(f"\nExtracted Car Name from the file {file}:", first_word)
+                                print(f"\nExtracted Car Name from the file {file}: \t", first_word)
                                 print(f"\nExtracted Table from file {file}:")
                                 print("\n")
                                 print(df)
@@ -189,7 +189,7 @@ def main():
                         adjusted_width = (max_length + 2)
                         worksheet.column_dimensions[column].width = adjusted_width
 
-            logging.info(f"\n\nData extraction complete for {folder_name}. \n\nResults saved in {output_file}.")
+            logging.info(f"\tData extraction complete for {folder_name}. \nResults saved in {output_file}.")
 
     # Data extraction timing
     extraction_end_time = time.time()

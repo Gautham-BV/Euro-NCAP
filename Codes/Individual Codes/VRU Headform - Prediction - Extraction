@@ -3,6 +3,10 @@ import pandas as pd
 import openpyxl
 import time
 
+# Suppress the warning messages
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl")
+
 def extract_data_from_excel(file_path):
     header = None
     data = []
