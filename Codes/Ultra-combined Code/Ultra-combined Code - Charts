@@ -5,6 +5,8 @@ import time
 import logging
 from openpyxl import load_workbook
 from openpyxl.chart import ScatterChart, Reference, Series
+from openpyxl.chart.shapes import GraphicalProperties
+from openpyxl.styles import PatternFill
 
 # Set up logging configuration
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -120,7 +122,7 @@ def main():
                                 # Capture the values from the second column of the extracted table
                                 if len(column_names) == 1 and len(df.columns) > 1:
                                     column_names.extend(df.iloc[:, 1].tolist())
-                                column_names[-1] = "Predicted headform score (excluding blue points)"
+                                column_names[-1]="Predicted headform score (excluding blue points)"
                                 
                                 # Multiply by 100 and round to 2 decimal places
                                 df.iloc[:, -1] = df.iloc[:, -1].apply(lambda x: (x * 100) if pd.notna(x) else x)
@@ -167,12 +169,13 @@ def main():
                         adjusted_width = (max_length + 2)
                         worksheet.column_dimensions[column].width = adjusted_width
 
-            logging.info(f"\nData extraction complete for {folder_name}. Results saved in {output_file}.")
+            logging.info(f"\n\nData extraction complete for {folder_name}. \n\nResults saved in {output_file}.")
 
     # Data extraction timing
     extraction_end_time = time.time()
     extraction_execution_time = extraction_end_time - extraction_start_time
-    logging.info(f"Data extraction completed in {extraction_execution_time:.2f} seconds.")
+    print("\n")
+    logging.info(f"\nData extraction completed in {extraction_execution_time:.2f} seconds.")
 
     # Graph generation timing
     graph_start_time = time.time()
@@ -195,33 +198,47 @@ def main():
             # Create a sheet named 'Graphs'
             ws = wb.create_sheet(title='Graphs')
             
-            # Generate scatter plots
+            # Initial positions for the first chart
+            row_position = 1
+            col_position = 1
+            
+            # Constants to control the layout
+            max_cols = 2  # Number of columns
+            row_increment = 20  # Number of rows between charts
+            col_increment = 8  # Number of columns between charts
+            
+            # Generate scatter charts
             for i, col in enumerate(df.columns[1:]):
                 chart = ScatterChart()
-                chart.title = f'{col}'
-                chart.style = 13
+                chart.title = col
+                chart.style = 2
                 chart.x_axis.title = df.columns[0]
                 chart.y_axis.title = '%-age'
-
-                # Add data to chart
-                x_values = Reference(ws, min_col=1, min_row=2, max_row=len(df) + 1)
-                y_values = Reference(ws, min_col=i + 2, min_row=2, max_row=len(df) + 1)
-                series = Series(y_values, x_values, title=col)
+                
+                xvalues = Reference(ws, min_col=1, min_row=2, max_row=df.shape[0] + 1)
+                yvalues = Reference(ws, min_col=i + 2, min_row=2, max_row=df.shape[0] + 1)
+                
+                series = Series(yvalues, xvalues, title=col)
                 chart.series.append(series)
                 
-                # Calculate the average value for the y-axis
+                # Add the average line
                 avg_value = df[col].mean()
-                
-                # Add the average line to the chart
-                avg_series = Series(Reference(ws, min_col=i + 2, min_row=2, max_row=len(df) + 1),
-                                    x_values, title=f'Average: {avg_value:.2f}')
-                avg_series.graphicalProperties.line.solidFill = "FFA500"  # Orange color
-                avg_series.graphicalProperties.line.width = 30000  # Width of the line
+                avg_series = Series(Reference(ws, min_col=i + 2, min_row=2, max_row=df.shape[0] + 1),
+                                    Reference(ws, min_col=1, min_row=2, max_row=df.shape[0] + 1),
+                                    title=f'Average: {avg_value:.2f}')
+                avg_series.graphicalProperties = GraphicalProperties(line={'dashStyle': 'sysDot'})
                 chart.series.append(avg_series)
-
-                # Add chart to the sheet
-                chart_cell = f'A{i * 15 + 1}'
-                ws.add_chart(chart, chart_cell)
+                
+                # Position the chart
+                chart_location = f"{chr(64 + col_position)}{row_position}"
+                ws.add_chart(chart, chart_location)
+                
+                # Update row and column positions for the next chart
+                if (i + 1) % max_cols == 0:
+                    row_position += row_increment  # Move to the next row block after filling max_cols
+                    col_position = 1  # Reset to the first column
+                else:
+                    col_position += col_increment  # Move to the next column
 
             # Save the updated Excel file with charts
             wb.save(file_path)
@@ -229,10 +246,12 @@ def main():
     # Graph generation timing
     graph_end_time = time.time()
     graph_execution_time = graph_end_time - graph_start_time
+    print("\n")
     logging.info(f"\nGraphs generated in {graph_execution_time:.2f} seconds.")
 
     # Total execution time
     total_execution_time = time.time() - start_time
+    print("\n")
     logging.info(f"\nTotal script execution time: {total_execution_time:.2f} seconds.\n")
 
 if __name__ == "__main__":
