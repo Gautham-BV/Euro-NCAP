@@ -61,17 +61,20 @@ def extract_data_from_excel(file_path):
             first_word = extract_first_word(overall_rating_sheet)
         else:
             return None, None, None
+        
+        print("\n\n****************************\n")
 
         # Extract the four-digit number from the file name
         file_name = os.path.basename(file_path)
         print(f"File Name: {file_name}")
 
         four_digit_number = re.search(r'\d{4}', file_name)
-        four_digit_number = four_digit_number.group() if four_digit_number else ""
-        if four_digit_number:
-            print(f"Found Number: {four_digit_number.group()}")
-        else:
-            print("No four-digit number found")
+        try:
+            match = re.search(r'\d{4}', file_name)
+            four_digit_number = match.group() if match else ""
+            print(f"Four Digit Number: {four_digit_number}")
+        except AttributeError as e:
+            print(f"Error: {e}")
         
         # Extract the data from the "VRU Headform" sheet
         if "VRU Headform" in workbook.sheetnames:
@@ -124,9 +127,7 @@ def main():
                                 file_name_prefix = f"{first_word} {four_digit_number}"
                             else:
                                 file_name_prefix = first_word
-
-                            print(f"***********************\nExtracted number from the file: {four_digit_number}")  # Print the number found
-
+                            
                             df = pd.DataFrame(data)
                             if not df.empty:
                                 df.columns = df.iloc[0]
