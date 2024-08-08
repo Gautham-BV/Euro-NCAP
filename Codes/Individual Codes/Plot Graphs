@@ -7,6 +7,10 @@ from io import BytesIO
 import numpy as np
 import time
 
+# Suppress the warning messages
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl")
+
 # Set input and output folder paths
 input_folder = 'Extracted Data/VRU Headform - Color-wise data'
 output_folder = 'Extracted Data/VRU Headform - Color-wise graphs'

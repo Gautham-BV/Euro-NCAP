@@ -4,6 +4,10 @@ import openpyxl
 import time
 import logging
 
+# Suppress the warning messages
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl")
+
 # Set up logging configuration
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 

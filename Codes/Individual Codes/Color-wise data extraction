@@ -2,6 +2,10 @@ import os
 import time
 from openpyxl import load_workbook, Workbook
 
+# Suppress the warning messages
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl")
+
 input_folder = 'Extracted Data/VRU Headform - Prediction tables'
 output_folder = 'Extracted Data/VRU Headform - Color-wise data'
 
