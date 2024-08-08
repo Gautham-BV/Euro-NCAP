@@ -4,6 +4,7 @@ import openpyxl
 import time
 import logging
 import matplotlib.pyplot as plt
+import re
 from openpyxl import load_workbook
 from openpyxl.drawing.image import Image
 from io import BytesIO
@@ -72,6 +73,13 @@ def extract_data_from_excel(file_path):
         logging.error(f"Error processing {file_path}: {e}")
         return None, None
 
+def extract_four_digit_number(file_name):
+    """Extract the first four-digit number from the file name"""
+    match = re.search(r'\b\d{4}\b', file_name)
+    if match:
+        return match.group(0)
+    return ''
+
 def main():
     """Main function to extract data, generate graphs, and save results"""
     # Define the root and output directories
@@ -110,6 +118,10 @@ def main():
                         file_path = os.path.join(subdir, file)
                         first_word, data = extract_data_from_excel(file_path)
                         if first_word and data:
+                            four_digit_number = extract_four_digit_number(file)
+                            if four_digit_number:
+                                first_word = f"{first_word}{four_digit_number}"
+                                
                             df = pd.DataFrame(data)
                             if not df.empty:
                                 df.columns = df.iloc[0]
@@ -126,7 +138,7 @@ def main():
                                 # Capture the values from the second column of the extracted table
                                 if len(column_names) == 1 and len(df.columns) > 1:
                                     column_names.extend(df.iloc[:, 1].tolist())
-                                column_names[-1]="Predicted headform score (excluding blue points)"
+                                column_names[-1] = "Predicted headform score (excluding blue points)"
                                 
                                 # Multiply by 100 and round to 2 decimal places
                                 df.iloc[:, -1] = df.iloc[:, -1].apply(lambda x: (x * 100) if pd.notna(x) else x)
