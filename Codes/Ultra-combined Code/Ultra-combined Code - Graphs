@@ -4,7 +4,7 @@ import openpyxl
 import time
 import logging
 import matplotlib.pyplot as plt
-import re
+import re  # For regular expression operations
 from openpyxl import load_workbook
 from openpyxl.drawing.image import Image
 from io import BytesIO
@@ -16,13 +16,17 @@ warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl")
 # Set up logging configuration
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def extract_first_word(sheet):
-    """Extract the first word from the "OVERALL RATING" sheet"""
+def extract_first_word_and_number(sheet):
+    """Extract the first word and the first four-digit number from the file's name"""
     for row in sheet.iter_rows():
         for cell in row:
             if cell.value:
-                return str(cell.value)
-    return None
+                first_word = str(cell.value)
+                # Use regex to find the first four-digit number
+                four_digit_number = re.search(r'\b\d{4}\b', str(cell.value))
+                four_digit_number = four_digit_number.group() if four_digit_number else ""
+                return first_word, four_digit_number
+    return None, None
 
 def extract_vru_headform_data(sheet):
     """Extract the data from the "VRU Headform" sheet between "PREDICTION" and "%-age"""
@@ -54,31 +58,24 @@ def extract_data_from_excel(file_path):
         # Load the workbook and sheets
         workbook = openpyxl.load_workbook(file_path, data_only=True)
         
-        # Extract the first word from the "OVERALL RATING" sheet
+        # Extract the first word and number from the "OVERALL RATING" sheet
         if "OVERALL RATING" in workbook.sheetnames:
             overall_rating_sheet = workbook["OVERALL RATING"]
-            first_word = extract_first_word(overall_rating_sheet)
+            first_word, four_digit_number = extract_first_word_and_number(overall_rating_sheet)
         else:
-            return None, None
+            return None, None, None
 
         # Extract the data from the "VRU Headform" sheet
         if "VRU Headform" in workbook.sheetnames:
             vru_headform_sheet = workbook["VRU Headform"]
             data = extract_vru_headform_data(vru_headform_sheet)
         else:
-            return first_word, None
+            return first_word, four_digit_number, None
 
-        return first_word, data
+        return first_word, four_digit_number, data
     except Exception as e:
         logging.error(f"Error processing {file_path}: {e}")
-        return None, None
-
-def extract_four_digit_number(file_name):
-    """Extract the first four-digit number from the file name"""
-    match = re.search(r'\b\d{4}\b', file_name)
-    if match:
-        return match.group(0)
-    return ''
+        return None, None, None
 
 def main():
     """Main function to extract data, generate graphs, and save results"""
@@ -102,9 +99,6 @@ def main():
         
         # Ensure it's a directory
         if os.path.isdir(folder_path):
-            first_word_of_folder = folder_name.split()[0]
-            output_file = os.path.join(output_directory, f"{first_word_of_folder}_cars_combined.xlsx")
-            
             # Initialize a DataFrame to collect all data
             combined_df = pd.DataFrame()
 
@@ -116,12 +110,13 @@ def main():
                 for file in files:
                     if file.endswith('.xlsx') or file.endswith('.xls'):
                         file_path = os.path.join(subdir, file)
-                        first_word, data = extract_data_from_excel(file_path)
+                        first_word, four_digit_number, data = extract_data_from_excel(file_path)
                         if first_word and data:
-                            four_digit_number = extract_four_digit_number(file)
                             if four_digit_number:
-                                first_word = f"{first_word}{four_digit_number}"
-                                
+                                file_name_prefix = f"{first_word} {four_digit_number}"
+                            else:
+                                file_name_prefix = first_word
+
                             df = pd.DataFrame(data)
                             if not df.empty:
                                 df.columns = df.iloc[0]
@@ -129,7 +124,7 @@ def main():
                                 df = df.dropna(how='all').dropna(axis=1, how='all')
 
                                 # Print the extracted table (df) every time
-                                print(f"\n\nExtracted Car Name from the file {file}:", first_word)
+                                print(f"\n\nExtracted Car Name from the file {file}:", file_name_prefix)
                                 print(f"\nExtracted Table from file {file}:")
                                 print("\n")
                                 print(df)
@@ -138,13 +133,13 @@ def main():
                                 # Capture the values from the second column of the extracted table
                                 if len(column_names) == 1 and len(df.columns) > 1:
                                     column_names.extend(df.iloc[:, 1].tolist())
-                                column_names[-1] = "Predicted headform score (excluding blue points)"
+                                column_names[-1]="Predicted headform score (excluding blue points)"
                                 
                                 # Multiply by 100 and round to 2 decimal places
                                 df.iloc[:, -1] = df.iloc[:, -1].apply(lambda x: (x * 100) if pd.notna(x) else x)
                                 
                                 # Append the first word and the last column of the extracted table as a new row
-                                new_row = [first_word] + df.iloc[:, -1].tolist()
+                                new_row = [file_name_prefix] + df.iloc[:, -1].tolist()
                                 combined_df = pd.concat([combined_df, pd.DataFrame([new_row])], ignore_index=True)
 
             # Remove duplicate rows
@@ -167,6 +162,7 @@ def main():
                 print("\n")
 
                 # Save the combined data to the "Data" sheet
+                output_file = os.path.join(output_directory, f"{folder_name}_cars_combined.xlsx")
                 with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
                     combined_df.to_excel(writer, sheet_name="Data", index=False)
 
