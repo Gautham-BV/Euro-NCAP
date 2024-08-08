@@ -1,4 +1,4 @@
-import os
+import os 
 import pandas as pd
 import openpyxl
 import time
@@ -17,16 +17,13 @@ warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl")
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def extract_first_word_and_number(sheet):
-    """Extract the first word and the first four-digit number from the sheet"""
+    """Extract the first word from the sheet"""
     for row in sheet.iter_rows():
         for cell in row:
             if cell.value:
                 first_word = str(cell.value).split()[0]
-                # Use regex to find the first four-digit number
-                four_digit_number = re.search(r'\b\d{4}\b', str(cell.value))
-                four_digit_number = four_digit_number.group() if four_digit_number else ""
-                return first_word, four_digit_number
-    return None, None
+                return first_word
+    return None
 
 def extract_vru_headform_data(sheet):
     """Extract the data from the "VRU Headform" sheet between "PREDICTION" and "%-age"""
@@ -61,9 +58,13 @@ def extract_data_from_excel(file_path):
         # Extract the first word and number from the "OVERALL RATING" sheet
         if "OVERALL RATING" in workbook.sheetnames:
             overall_rating_sheet = workbook["OVERALL RATING"]
-            first_word, four_digit_number = extract_first_word_and_number(overall_rating_sheet)
+            first_word = extract_first_word_and_number(overall_rating_sheet)
         else:
             return None, None, None
+
+        # Extract the four-digit number from the file name
+        four_digit_number = re.search(r'\b\d{4}\b', os.path.basename(file_path))
+        four_digit_number = four_digit_number.group() if four_digit_number else ""
 
         # Extract the data from the "VRU Headform" sheet
         if "VRU Headform" in workbook.sheetnames:
@@ -76,67 +77,6 @@ def extract_data_from_excel(file_path):
     except Exception as e:
         logging.error(f"Error processing {file_path}: {e}")
         return None, None, None
-
-def generate_graphs(df, workbook, worksheet):
-    """Generate scatter plots and add them to the Excel workbook"""
-    # Create a sheet named 'Graphs'
-    ws = workbook.create_sheet(title='Graphs')
-    
-    # Initial positions for the first graph
-    row_position = 1
-    col_position = 1
-    
-    # Constants to control the layout
-    max_cols = 2  # Number of columns
-    row_increment = 26  # Number of rows between graphs
-    col_increment = 10  # Number of columns between graphs
-    
-    # Generate scatter plots
-    for i, col in enumerate(df.columns[1:]):
-        fig, ax = plt.subplots()
-        scatter = ax.scatter(df[df.columns[0]], df[col], label=col, s=10, c='red')  # Set marker size to 8 and color to red
-        
-        # Calculate the average value for the y-axis
-        avg_value = df[col].mean()
-        
-        # Plot the average value as a horizontal orange line
-        ax.axhline(y=avg_value, color='orange', linestyle='-', label=f'Average: {avg_value:.2f}')
-        
-        ax.set_xlabel(df.columns[0], fontsize=10)  # Reduce x-axis label font size
-        ax.set_ylabel('%-age', fontsize=10)  # Set y-axis label to '%-age'
-        ax.set_title(f'{col}', fontsize=12)  # Reduce title font size
-        ax.xaxis.set_tick_params(rotation=90, labelsize=6)  # Reduce x-axis label font size
-        ax.yaxis.set_tick_params(labelsize=8)  # Reduce y-axis label font size
-        ax.legend(fontsize=8)  # Adjust legend font size
-        
-        # Add data labels with 2 decimal places and offset to avoid overlapping
-        for j, txt in enumerate(df[col]):
-            ax.annotate(f'{txt:.2f}', (df[df.columns[0]][j], df[col][j]), 
-                        fontsize=6, ha='right', 
-                        xytext=(3,3), textcoords='offset points')  # Offset labels slightly
-        
-        # Adjust layout to make sure labels are fully visible
-        plt.tight_layout()
-        
-        # Save plot to a BytesIO object
-        img_stream = BytesIO()
-        plt.savefig(img_stream, format='png', bbox_inches='tight')  # Use bbox_inches='tight' to crop extra whitespace
-        plt.close(fig)
-        
-        # Add image to Excel in the 'Graphs' sheet
-        img_stream.seek(0)
-        img = Image(img_stream)
-        
-        # Calculate anchor position for the image
-        img.anchor = ws.cell(row=row_position, column=col_position).coordinate
-        ws.add_image(img)
-        
-        # Update row and column positions for the next graph
-        if (i + 1) % max_cols == 0:
-            row_position += row_increment  # Move to the next row block after filling max_cols
-            col_position = 1  # Reset to the first column
-        else:
-            col_position += col_increment  # Move to the next column
 
 def main():
     """Main function to extract data, generate graphs, and save results"""
@@ -178,11 +118,20 @@ def main():
                             else:
                                 file_name_prefix = first_word
 
+                            print(f"Extracted number from the file: {four_digit_number}")  # Print the number found
+
                             df = pd.DataFrame(data)
                             if not df.empty:
                                 df.columns = df.iloc[0]
                                 df = df[1:]
                                 df = df.dropna(how='all').dropna(axis=1, how='all')
+
+                                # Print the extracted table (df) every time
+                                print(f"\n\nExtracted Car Name from the file {file}:", file_name_prefix)
+                                print(f"\nExtracted Table from file {file}:")
+                                print("\n")
+                                print(df)
+                                print("\n")
                                 
                                 # Capture the values from the second column of the extracted table
                                 if len(column_names) == 1 and len(df.columns) > 1:
@@ -206,6 +155,15 @@ def main():
                     column_names.extend([f"Column {i+1}" for i in range(len(column_names), combined_df.shape[1])])
                 combined_df.columns = column_names[:combined_df.shape[1]]  # Ensure exact match
 
+                # Print the combined DataFrame and column names
+                print("\n")
+                print(f"\nCombined DataFrame for {folder_name}:")
+                print("\n")
+                print(combined_df)
+                print("\n")
+                print(f"Column names: {combined_df.columns.tolist()}")
+                print("\n")
+
                 # Save the combined data to the "Data" sheet
                 output_file = os.path.join(output_directory, f"{folder_name}_cars_combined.xlsx")
                 with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
@@ -226,10 +184,80 @@ def main():
                         adjusted_width = (max_length + 2)
                         worksheet.column_dimensions[column].width = adjusted_width
 
-                    # Generate graphs immediately after the "Data" sheet creation
-                    generate_graphs(combined_df, workbook, worksheet)
+                logging.info(f"\n\nData extraction complete for {folder_name}. \n\nResults saved in {output_file}.")
 
-            logging.info(f"\n\nData extraction complete for {folder_name}. \n\nResults saved in {output_file}.")
+                # Generate graphs as soon as "Data" sheet is created
+                # Read Excel file
+                df = pd.read_excel(output_file)
+                
+                # Load the existing Workbook
+                wb = load_workbook(output_file)
+                
+                # Remove the sheet named 'Graphs' if it already exists
+                if 'Graphs' in wb.sheetnames:
+                    del wb['Graphs']
+                
+                # Create a sheet named 'Graphs'
+                ws = wb.create_sheet(title='Graphs')
+                
+                # Initial positions for the first graph
+                row_position = 1
+                col_position = 1
+                
+                # Constants to control the layout
+                max_cols = 2  # Number of columns
+                row_increment = 26  # Number of rows between graphs
+                col_increment = 10  # Number of columns between graphs
+                
+                # Generate scatter plots
+                for i, col in enumerate(df.columns[1:]):
+                    fig, ax = plt.subplots()
+                    scatter = ax.scatter(df[df.columns[0]], df[col], label=col, s=10, c='red')  # Set marker size to 8 and color to red
+                    
+                    # Calculate the average value for the y-axis
+                    avg_value = df[col].mean()
+                    
+                    # Plot the average value as a horizontal orange line
+                    ax.axhline(y=avg_value, color='orange', linestyle='-', label=f'Average: {avg_value:.2f}')
+                    
+                    ax.set_xlabel(df.columns[0], fontsize=10)  # Reduce x-axis label font size
+                    ax.set_ylabel('%-age', fontsize=10)  # Set y-axis label to '%-age'
+                    ax.set_title(f'{col}', fontsize=12)  # Reduce title font size
+                    ax.xaxis.set_tick_params(rotation=90, labelsize=6)  # Reduce x-axis label font size
+                    ax.yaxis.set_tick_params(labelsize=8)  # Reduce y-axis label font size
+                    ax.legend(fontsize=8)  # Adjust legend font size
+                    
+                    # Add data labels with 2 decimal places and offset to avoid overlapping
+                    for j, txt in enumerate(df[col]):
+                        ax.annotate(f'{txt:.2f}', (df[df.columns[0]][j], df[col][j]), 
+                                    fontsize=6, ha='right', 
+                                    xytext=(3,3), textcoords='offset points')  # Offset labels slightly
+                    
+                    # Adjust layout to make sure labels are fully visible
+                    plt.tight_layout()
+                    
+                    # Save plot to a BytesIO object
+                    img_stream = BytesIO()
+                    plt.savefig(img_stream, format='png', bbox_inches='tight')  # Use bbox_inches='tight' to crop extra whitespace
+                    plt.close(fig)
+                    
+                    # Add image to Excel in the 'Graphs' sheet
+                    img_stream.seek(0)
+                    img = Image(img_stream)
+                    
+                    # Calculate anchor position for the image
+                    img.anchor = ws.cell(row=row_position, column=col_position).coordinate
+                    ws.add_image(img)
+                    
+                    # Update row and column positions for the next graph
+                    if (i + 1) % max_cols == 0:
+                        row_position += row_increment  # Move to the next row block after filling max_cols
+                        col_position = 1  # Reset to the first column
+                    else:
+                        col_position += col_increment  # Move to the next column
+
+                # Save the updated Excel file with graphs
+                wb.save(output_file)
 
     # Data extraction timing
     extraction_end_time = time.time()
